@@ -7,6 +7,7 @@ import tarfile
 import io
 from collections import Counter
 from sklearn.model_selection import train_test_split
+from sklearn.datasets import fetch_20newsgroups
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -46,28 +47,38 @@ class TextPreprocessor:
     
     def clean_text(self, text):
         """Clean and preprocess text."""
+        # Convert to string if not already
+        if not isinstance(text, str):
+            text = str(text)
+            
         # Convert to lowercase
         text = text.lower()
+        
         # Remove special characters and numbers
         text = self.pattern.sub(' ', text)
-        # Tokenize
-        tokens = word_tokenize(text)
-        # Remove stopwords and short tokens
-        tokens = [word for word in tokens 
-                 if word not in self.stopwords 
-                 and len(word) > 1]
-        return ' '.join(tokens)
+        
+        try:
+            # Tokenize
+            tokens = word_tokenize(text)
+            # Remove stopwords and short tokens
+            tokens = [word for word in tokens 
+                     if word not in self.stopwords 
+                     and len(word) > 1]
+            return ' '.join(tokens)
+        except Exception as e:
+            print(f"Error processing text: {e}")
+            return ''  # Return empty string for problematic texts
 
 class TextDataset:
     """A class to load and preprocess text classification datasets."""
     
     DATASETS = {
-        'r8': {
-            'url': 'https://cogcomp.seas.upenn.edu/Data/TC/Reuters21578-Apte-115Cat/trainTestSplit/Reuters21578-Apte-90Cat-6GVT.devel.25mc.gz',
-            'filename': 'r8.tar.gz',
-            'extract_dir': 'r8',
-            'train_file': 'r8-train-all-terms.txt',
-            'test_file': 'r8-test-all-terms.txt'
+        '20news': {
+            'categories': ['sci.space', 'comp.graphics', 'rec.sport.baseball', 'talk.politics.mideast'],
+            'subset': 'all',  # 'all', 'train', or 'test'
+            'shuffle': True,
+            'random_state': 42,
+            'remove': ('headers', 'footers', 'quotes')  # Remove headers, footers, and quotes
         },
         'mr': {
             'url': 'https://www.cs.cornell.edu/people/pabo/movie-review-data/rt-polaritydata.tar.gz',
@@ -108,49 +119,60 @@ class TextDataset:
     def _download_dataset(self):
         """Download and extract the dataset if not already present."""
         dataset_info = self.DATASETS[self.dataset_name]
-        filepath = os.path.join(self.data_dir, dataset_info['filename'])
+        os.makedirs(self.data_dir, exist_ok=True)
         
-        # Download the dataset if it doesn't exist
-        if not os.path.exists(filepath):
-            filepath = download_file(dataset_info['url'], dataset_info['filename'], self.data_dir)
+        # For R8 dataset, we need to download both train and test files
+        if self.dataset_name == 'r8':
+            train_file = os.path.join(self.data_dir, dataset_info['filename'])
+            test_file = os.path.join(self.data_dir, dataset_info['test_filename'])
             
-            # Extract the downloaded file
-            if filepath.endswith('.gz'):
-                extract_tar_gz(filepath, self.data_dir)
-    
-    def _load_r8(self):
-        """Load the R8 dataset."""
-        dataset_info = self.DATASETS['r8']
-        train_file = os.path.join(self.data_dir, dataset_info['extract_dir'], dataset_info['train_file'])
-        test_file = os.path.join(self.data_dir, dataset_info['extract_dir'], dataset_info['test_file'])
+            # Download train file if it doesn't exist
+            if not os.path.exists(train_file):
+                download_file(dataset_info['url'], dataset_info['filename'], self.data_dir)
+                
+            # Download test file if it doesn't exist
+            if not os.path.exists(test_file):
+                download_file(dataset_info['test_url'], dataset_info['test_filename'], self.data_dir)
+        else:
+            # For other datasets (like MR), use the original logic
+            filepath = os.path.join(self.data_dir, dataset_info['filename'])
+            if not os.path.exists(filepath):
+                filepath = download_file(dataset_info['url'], dataset_info['filename'], self.data_dir)
+    def _load_20news(self):
+        """Load the 20 Newsgroups dataset."""
+        dataset_info = self.DATASETS['20news']
         
-        # Read train and test files
-        train_data = []
-        with open(train_file, 'r', encoding='latin1') as f:
-            train_data = f.readlines()
+        # Load the dataset
+        newsgroups = fetch_20newsgroups(
+            subset=dataset_info['subset'],
+            categories=dataset_info['categories'],
+            shuffle=dataset_info['shuffle'],
+            random_state=dataset_info['random_state'],
+            remove=dataset_info['remove']
+        )
         
-        test_data = []
-        with open(test_file, 'r', encoding='latin1') as f:
-            test_data = f.readlines()
+        # Create DataFrame
+        df = pd.DataFrame({
+            'text': newsgroups.data,
+            'label': [newsgroups.target_names[t] for t in newsgroups.target]
+        })
         
-        # Parse data
-        texts, labels = [], []
-        for line in train_data + test_data:
-            if '\t' in line:
-                label, text = line.strip().split('\t', 1)
-                texts.append(text)
-                labels.append(label)
+        return df
         
-        return pd.DataFrame({'text': texts, 'label': labels})
-    
     def _load_mr(self):
         """Load the MR dataset."""
         dataset_info = self.DATASETS['mr']
+        
+        # Create data directory if it doesn't exist
+        os.makedirs(os.path.join(self.data_dir, dataset_info['extract_dir']), exist_ok=True)
+        
+        # Download and extract the dataset if needed
+        self._download_dataset()
+        
         pos_file = os.path.join(self.data_dir, dataset_info['extract_dir'], dataset_info['pos_file'])
         neg_file = os.path.join(self.data_dir, dataset_info['extract_dir'], dataset_info['neg_file'])
         
         # Read positive and negative reviews
-        pos_data = []
         with open(pos_file, 'r', encoding='latin1') as f:
             pos_data = [line.strip() for line in f]
         
@@ -163,25 +185,23 @@ class TextDataset:
         df_neg = pd.DataFrame({'text': neg_data, 'label': 'negative'})
         
         return pd.concat([df_pos, df_neg], ignore_index=True)
-    
+        
     def _load_dataset(self):
         """Load the specified dataset."""
-        # Download the dataset if needed
-        self._download_dataset()
-        
-        # Load the dataset
-        if self.dataset_name == 'r8':
-            self.df = self._load_r8()
+        if self.dataset_name == '20news':
+            self.df = self._load_20news()
         elif self.dataset_name == 'mr':
             self.df = self._load_mr()
+        else:
+            raise ValueError(f"Unsupported dataset: {self.dataset_name}")
         
-        # Preprocess text if enabled
-        if self.preprocessor:
-            self.df['text'] = self.df['text'].apply(self.preprocessor.clean_text)
-        
-        # Create label mapping
+        # Create label map
         self.label_map = {label: i for i, label in enumerate(sorted(self.df['label'].unique()))}
         self.df['label_id'] = self.df['label'].map(self.label_map)
+        
+        # Preprocess text if needed
+        if self.preprocessor:
+            self.df['text'] = self.df['text'].apply(self.preprocessor.clean_text)
     
     def _print_statistics(self):
         """Print dataset statistics."""

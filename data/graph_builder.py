@@ -12,8 +12,15 @@ import math
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Download required NLTK data
-nltk.download('punkt')
-nltk.download('stopwords')
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+    
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
 
 class GraphBuilder:
     """
@@ -50,32 +57,45 @@ class GraphBuilder:
         
         # For TF-IDF node features
         self.vectorizer = None
-    
-    def preprocess_text(self, text, return_string=False):
+        
+    def preprocess_text(self, text):
         """
-        Preprocess text by tokenizing, removing stopwords and punctuation.
+        Preprocess a single text document.
         
         Args:
             text (str): Input text
-            return_string (bool): If True, return preprocessed text as a string
             
         Returns:
-            list or str: Processed tokens or joined string
+            list: List of processed tokens
         """
-        # Convert to lowercase and tokenize
-        tokens = word_tokenize(text.lower())
-        
-        # Remove stopwords, punctuation, and short words
-        tokens = [
-            word for word in tokens 
-            if (word not in self.stop_words and 
-                word not in self.punctuation and 
-                len(word) > 1 and
-                word.isalpha())
-        ]
-        
-        return ' '.join(tokens) if return_string else tokens
-    
+        if not isinstance(text, str):
+            text = str(text)
+            
+        try:
+            # Simple whitespace tokenization as fallback
+            tokens = text.lower().split()
+            
+            # Basic cleaning
+            tokens = [
+                word.strip(''.join(self.punctuation))
+                for word in tokens
+                if word.strip(''.join(self.punctuation))  # Remove empty strings
+            ]
+            
+            # Remove stopwords and short tokens
+            tokens = [
+                word 
+                for word in tokens 
+                if word not in self.stop_words 
+                and len(word) > 1
+            ]
+            
+            return tokens
+            
+        except Exception as e:
+            print(f"Error processing text: {e}")
+            return []  # Return empty list for problematic texts
+            
     def build_vocab(self, documents):
         """
         Build vocabulary from a list of documents.
@@ -113,24 +133,20 @@ class GraphBuilder:
         
         # Initialize TF-IDF vectorizer
         self.vectorizer = TfidfVectorizer(
-            vocabulary=self.vocab,
-            tokenizer=lambda x: x.split(),
-            preprocessor=lambda x: x,
+            tokenizer=lambda x: x,  # Already tokenized
+            preprocessor=None,  # Already preprocessed
             token_pattern=None
         )
         
-        # Fit TF-IDF on the preprocessed documents
-        preprocessed_docs = [self.preprocess_text(doc, return_string=True) for doc in documents]
+        # Convert token lists to space-separated strings for TF-IDF
+        preprocessed_docs = [' '.join(self.preprocess_text(doc)) for doc in documents]
         self.vectorizer.fit(preprocessed_docs)
         
-        return vocab
-    
+        return self.word_to_idx
+        
     def calculate_pmi(self, word1, word2):
         """
         Calculate Pointwise Mutual Information (PMI) between two words.
-        
-        PMI(i,j) = log(p(i,j) / (p(i) * p(j)))
-        where p(i,j) = co-occurrence count / total windows
         
         Args:
             word1 (str): First word
@@ -205,68 +221,86 @@ class GraphBuilder:
         
         Args:
             text (str): Input text document
-            min_pmi (float): Minimum PMI threshold for edge creation
+            min_pmi (float): Not used, kept for backward compatibility
             
         Returns:
             tuple: (node_features, edge_index, edge_weights)
-                - node_features: Tensor of shape (num_nodes, vocab_size) with TF-IDF values
+                - node_features: Tensor of shape (num_nodes, vocab_size) with one-hot encoded word indices
                 - edge_index: Tensor of shape (2, num_edges) with edge connections
-                - edge_weights: Tensor of shape (num_edges,) with PMI values
+                - edge_weights: Tensor of shape (num_edges,) with edge weights based on co-occurrence
         """
         # Preprocess text and get tokens
         tokens = self.preprocess_text(text)
         
-        # Filter tokens by vocabulary and get unique words
-        unique_words = list(set([t for t in tokens if t in self.word_to_idx]))
+        # Get unique words in the document that are in our vocabulary
+        unique_words = list(set([word for word in tokens if word in self.word_to_idx]))
         num_nodes = len(unique_words)
         
         if num_nodes == 0:
             # Return empty graph with a single node
             return (
-                torch.zeros((1, len(self.vocab))),
+                torch.zeros((1, len(self.vocab))),  # One node with zero features
                 torch.zeros((2, 0), dtype=torch.long),
                 torch.zeros(0)
             )
         
-        # Create node features using TF-IDF
-        text_str = ' '.join(tokens)
-        tfidf = self.vectorizer.transform([self.preprocess_text(text, return_string=True)])
-        node_features = torch.FloatTensor(tfidf.toarray())
+        # Create one-hot encoded node features
+        node_features = torch.zeros((num_nodes, len(self.vocab)), dtype=torch.float)
+        for i, word in enumerate(unique_words):
+            if word in self.word_to_idx:
+                node_features[i, self.word_to_idx[word]] = 1.0
         
-        # Create edges based on PMI
+        # Create edges based on co-occurrence within a window
         edges = []
         edge_weights = []
         
-        # Add edges between all pairs of words in the document
-        for i in range(num_nodes):
-            for j in range(i + 1, num_nodes):
-                word1 = unique_words[i]
-                word2 = unique_words[j]
+        # Create a local co-occurrence matrix for this document
+        local_cooccurrence = defaultdict(lambda: defaultdict(int))
+        
+        # Build local co-occurrence matrix
+        for i in range(len(tokens)):
+            for j in range(i + 1, min(i + self.window_size + 1, len(tokens))):
+                word1 = tokens[i]
+                word2 = tokens[j]
                 
-                # Calculate PMI
-                pmi = self.calculate_pmi(word1, word2)
-                
-                # Add edge if PMI is above threshold
-                if pmi > min_pmi:
-                    # Add edge in both directions (undirected graph)
-                    edges.append((i, j))
-                    edges.append((j, i))
-                    edge_weights.extend([pmi, pmi])
+                # Only consider words in our vocabulary
+                if word1 in self.word_to_idx and word2 in self.word_to_idx:
+                    local_cooccurrence[word1][word2] += 1
+                    local_cooccurrence[word2][word1] += 1  # Undirected graph
+        
+        # Create a mapping from word to node index
+        word_to_node = {word: i for i, word in enumerate(unique_words)}
+        
+        # Add edges based on local co-occurrence
+        for word1 in local_cooccurrence:
+            for word2, count in local_cooccurrence[word1].items():
+                if count > 0 and word1 in word_to_node and word2 in word_to_node:
+                    i = word_to_node[word1]
+                    j = word_to_node[word2]
+                    
+                    # Add edge in both directions for undirected graph
+                    edges.append([i, j])
+                    edges.append([j, i])
+                    
+                    # Use log(1 + count) as edge weight to reduce the impact of high-frequency pairs
+                    weight = math.log(1 + count)
+                    edge_weights.append(weight)
+                    edge_weights.append(weight)
+        
+        if not edges:
+            # If no edges were added, add self-loops to all nodes
+            edges = [[i, i] for i in range(num_nodes)]
+            edge_weights = [1.0] * num_nodes
         
         # Convert to tensors
-        if edges:
-            edge_index = torch.tensor(edges, dtype=torch.long).t()
-            edge_weights = torch.FloatTensor(edge_weights)
-        else:
-            # If no edges, create self-loops to avoid empty graph
-            edge_index = torch.tensor([range(num_nodes), range(num_nodes)], dtype=torch.long)
-            edge_weights = torch.ones(num_nodes)
+        edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+        edge_weights = torch.tensor(edge_weights, dtype=torch.float)
         
         return node_features, edge_index, edge_weights
     
     def texts_to_graphs(self, documents, min_pmi=0.0):
         """
-        Convert a list of documents to graph representations.
+{{ ... }}
         
         Args:
             documents (list): List of text documents

@@ -19,40 +19,71 @@ from data.loader import TextDataset, TextPreprocessor
 from data.graph_builder import GraphBuilder
 
 class GraphDataset(Dataset):
-        return node_features, edge_index, label, text
+    def __init__(self, texts, labels, graph_builder):
+        self.texts = texts
+        self.labels = labels
+        self.graph_builder = graph_builder
+        
+    def __len__(self):
+        return len(self.texts)
+        
+    def __getitem__(self, idx):
+        text = self.texts[idx]
+        label = self.labels[idx]
+        node_features, edge_index, edge_weights = self.graph_builder.text_to_graph(text)
+        return node_features, edge_index, edge_weights, label, text
 
 
 def collate_fn(batch):
-    """Collate function for creating batches of graphs."""
-    node_features_list, edge_indices, labels, texts = zip(*batch)
+    """Collate function for creating batches of graphs with edge weights."""
+    node_features_list, edge_indices, edge_weights_list, labels, texts = zip(*batch)
     
-    # Create a batch of graphs
+    # Create a list to store PyG Data objects
     data_list = []
-    for i, (feat, edge_idx, label, text) in enumerate(zip(node_features_list, 
-                                                         edge_indices, 
-                                                         labels, 
-                                                         texts)):
+    labels_list = []
+    texts_list = []
+    
+    for i, (feat, edge_idx, edge_weights, label, text) in enumerate(zip(
+        node_features_list, 
+        edge_indices, 
+        edge_weights_list,
+        labels, 
+        texts
+    )):
         if edge_idx.size(1) == 0:  # Skip empty graphs
             continue
-        data = {
-            'x': feat,
-            'edge_index': edge_idx,
-            'y': torch.tensor([label], dtype=torch.long),
-            'text': text
-        }
+            
+        # Ensure edge indices are within bounds
+        num_nodes = feat.size(0)
+        edge_idx = edge_idx.clone()
+        edge_idx[edge_idx >= num_nodes] = num_nodes - 1  # Clamp to last node index
+        
+        # Ensure we have the same number of edges and edge weights
+        if edge_weights.size(0) != edge_idx.size(1):
+            edge_weights = torch.ones(edge_idx.size(1), device=edge_weights.device)
+        
+        # Create a PyG Data object
+        data = Data(
+            x=feat,
+            edge_index=edge_idx,
+            edge_attr=edge_weights.unsqueeze(1),  # Add edge weights as edge features
+            y=torch.tensor([label], dtype=torch.long)
+        )
         data_list.append(data)
+        labels_list.append(label)
+        texts_list.append(text)
     
-    # Create a batch from the list of graphs
-    batch_data = Batch.from_data_list([
-        {'x': d['x'], 'edge_index': d['edge_index'], 'y': d['y']} 
-        for d in data_list
-    ])
+    if not data_list:  # If all graphs were empty
+        return None, None, None
     
-    # Extract texts and labels for the non-empty graphs
-    texts = [d['text'] for d in data_list]
-    labels = [d['y'].item() for d in data_list]
+    try:
+        # Create a batch from the list of Data objects
+        batch_data = Batch.from_data_list(data_list)
+    except Exception as e:
+        print(f"Error creating batch: {e}")
+        return None, None, None
     
-    return batch_data, torch.tensor(labels, dtype=torch.long), texts
+    return batch_data, torch.tensor(labels_list, dtype=torch.long), texts_list
 
 
 def train_epoch(model, loader, criterion, optimizer, device):
@@ -61,16 +92,22 @@ def train_epoch(model, loader, criterion, optimizer, device):
     total_loss = 0
     all_preds = []
     all_labels = []
+    num_batches = 0
     
     for batch in tqdm(loader, desc="Training"):
         data, labels, _ = batch
+        
+        # Skip empty batches
+        if data is None or labels is None:
+            continue
+            
         data = data.to(device)
         labels = labels.to(device)
         
         optimizer.zero_grad()
         
-        # Forward pass
-        outputs = model(data.x, data.edge_index, data.batch)
+        # Forward pass - pass the entire data object to the model
+        outputs = model(data)
         loss = criterion(outputs, labels)
         
         # Backward pass and optimize
@@ -82,11 +119,15 @@ def train_epoch(model, loader, criterion, optimizer, device):
         _, preds = torch.max(outputs, 1)
         all_preds.extend(preds.cpu().numpy())
         all_labels.extend(labels.cpu().numpy())
+        num_batches += 1
     
     # Calculate metrics
-    avg_loss = total_loss / len(loader)
-    accuracy = accuracy_score(all_labels, all_preds)
-    f1 = f1_score(all_labels, all_preds, average='weighted')
+    if num_batches == 0:
+        return 0.0, 0.0, 0.0
+        
+    avg_loss = total_loss / num_batches
+    accuracy = accuracy_score(all_labels, all_preds) if all_preds else 0.0
+    f1 = f1_score(all_labels, all_preds, average='weighted') if all_preds else 0.0
     
     return avg_loss, accuracy, f1
 
@@ -98,15 +139,21 @@ def evaluate(model, loader, criterion, device):
     all_preds = []
     all_labels = []
     all_texts = []
+    num_batches = 0
     
     with torch.no_grad():
         for batch in tqdm(loader, desc="Evaluating"):
             data, labels, texts = batch
+            
+            # Skip empty batches
+            if data is None or labels is None:
+                continue
+                
             data = data.to(device)
             labels = labels.to(device)
             
-            # Forward pass
-            outputs = model(data.x, data.edge_index, data.batch)
+            # Forward pass - pass the entire data object to the model
+            outputs = model(data)
             loss = criterion(outputs, labels)
             
             # Track metrics
@@ -115,11 +162,15 @@ def evaluate(model, loader, criterion, device):
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
             all_texts.extend(texts)
+            num_batches += 1
     
     # Calculate metrics
-    avg_loss = total_loss / len(loader)
-    accuracy = accuracy_score(all_labels, all_preds)
-    f1 = f1_score(all_labels, all_preds, average='weighted')
+    if num_batches == 0:
+        return 0.0, 0.0, 0.0, [], [], []
+        
+    avg_loss = total_loss / num_batches
+    accuracy = accuracy_score(all_labels, all_preds) if all_preds else 0.0
+    f1 = f1_score(all_labels, all_preds, average='weighted') if all_preds else 0.0
     
     return avg_loss, accuracy, f1, all_texts, all_preds, all_labels
 
@@ -175,34 +226,30 @@ def train_model(model, train_loader, val_loader, test_loader,
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
-    history = {
-        'train_loss': [], 'train_acc': [], 'train_f1': [],
-        'val_loss': [], 'val_acc': [], 'val_f1': []
-    }
-    
     best_val_f1 = 0.0
     epochs_no_improve = 0
     best_model = None
     
+    history = {
+        'train_loss': [],
+        'train_acc': [],
+        'train_f1': [],
+        'val_loss': [],
+        'val_acc': [],
+        'val_f1': []
+    }
+    
     for epoch in range(num_epochs):
-        print(f"\nEpoch {epoch+1}/{num_epochs}")
-        print("-" * 60)
-        
-        # Train for one epoch
+        model.train()
         train_loss, train_acc, train_f1 = train_epoch(
             model, train_loader, criterion, optimizer, device
         )
         
-        # Evaluate on validation set
+        model.eval()
         val_loss, val_acc, val_f1, _, _, _ = evaluate(
             model, val_loader, criterion, device
         )
         
-        # Print metrics
-        print(f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}")
-        print(f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}, F1: {val_f1:.4f}")
-        
-        # Save history
         history['train_loss'].append(train_loss)
         history['train_acc'].append(train_acc)
         history['train_f1'].append(train_f1)
@@ -210,23 +257,24 @@ def train_model(model, train_loader, val_loader, test_loader,
         history['val_acc'].append(val_acc)
         history['val_f1'].append(val_f1)
         
-        # Check for improvement
+        print(f"Epoch {epoch+1}/{num_epochs}:")
+        print(f"  Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}")
+        print(f"  Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}, F1: {val_f1:.4f}")
+        
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
-            epochs_no_improve = 0
-            best_model = model.state_dict()
+            best_model = model.state_dict().copy()
             torch.save(model.state_dict(), model_save_path)
             print(f"Model saved to {model_save_path}")
+            epochs_no_improve = 0
         else:
             epochs_no_improve += 1
             if epochs_no_improve >= patience:
                 print(f"\nEarly stopping triggered after {epoch+1} epochs")
                 break
     
-    # Load best model for testing
-    model.load_state_dict(best_model)
+    model.load_state_dict(torch.load(model_save_path))
     
-    # Evaluate on test set
     test_loss, test_acc, test_f1, test_texts, test_preds, test_labels = evaluate(
         model, test_loader, criterion, device
     )
@@ -238,55 +286,19 @@ def train_model(model, train_loader, val_loader, test_loader,
         'classification_report': classification_report(test_labels, test_preds, output_dict=True)
     }
     
-    return model, history, test_metrics
-            best_val_f1 = val_f1
-            torch.save(model.state_dict(), model_save_path)
-            print(f"Model saved to {model_save_path}")
-            
-            # Early stopping check
-            epochs_no_improve = 0
-        else:
-            epochs_no_improve += 1
-            if epochs_no_improve >= patience:
-                print(f"\nEarly stopping after {epoch+1} epochs")
-                break
-    
-    # Load best model for testing
-    model.load_state_dict(torch.load(model_save_path))
-    
-    # Final evaluation on test set
-    test_loss, test_acc, test_f1, test_texts, test_preds, test_labels = evaluate(
-        model, test_loader, criterion, device
-    )
-    
-    # Update history with test metrics
     history['test_loss'] = test_loss
     history['test_acc'] = test_acc
     history['test_f1'] = test_f1
     
     print(f"\nTest Results - Loss: {test_loss:.4f}, Acc: {test_acc:.4f}, F1: {test_f1:.4f}")
     
-    return model, history
-            torch.save(model.state_dict(), model_save_path)
-            print(f"Saved new best model with Val F1: {val_f1:.4f}")
-    
-    # Load the best model and evaluate on test set
-    print("\nEvaluating on test set...")
-    model.load_state_dict(torch.load(model_save_path))
-    test_loss, test_acc, test_f1, test_texts, test_preds, test_labels = evaluate(
-        model, test_loader, criterion, device
-    )
-    
-    print(f"Test Loss: {test_loss:.4f}, Acc: {test_acc:.4f}, F1: {test_f1:.4f}")
-    
-    # Save test results
-    history['test_loss'] = test_loss
-    history['test_acc'] = test_acc
-    history['test_f1'] = test_f1
+    # Add test results to history
     history['test_results'] = {
         'texts': test_texts,
         'preds': test_preds,
         'labels': test_labels
     }
     
+    # Add test metrics to history for easier access
+    history['test_metrics'] = test_metrics
     return history

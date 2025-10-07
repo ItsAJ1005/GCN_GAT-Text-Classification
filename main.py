@@ -2,12 +2,16 @@ import os
 import argparse
 import torch
 import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
 from data.loader import TextDataset
 from data.graph_builder import GraphBuilder
-from models.gcn import GCN
-from models.gat import GAT
+from models.gcn import DocumentGCN as GCN
+from models.gat import DocumentGAT as GAT
 from train import train_model, GraphDataset, collate_fn
-from evaluate import evaluate_model, plot_training_history, analyze_misclassifications
+from evaluate import evaluate_model, compare_models
+from utils import plot_training_history
 from torch.utils.data import DataLoader
 
 def parse_args():
@@ -15,8 +19,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Text Classification with GNNs')
     
     # Data arguments
+    parser.add_argument('--dataset', type=str, default='20news',
+                        choices=['20news', 'mr'],
+                        help='Dataset to use (20news or mr)')
     parser.add_argument('--data_path', type=str, default=None,
-                        help='Path to the dataset file (CSV with text and label columns)')
+                        help='Path to the dataset file (CSV with text and label columns). If not provided, the built-in dataset will be used.')
     parser.add_argument('--test_size', type=float, default=0.2,
                         help='Proportion of data to use for testing')
     parser.add_argument('--val_size', type=float, default=0.1,
@@ -25,8 +32,9 @@ def parse_args():
                         help='Random seed for reproducibility')
     
     # Model arguments
-    parser.add_argument('--model_type', type=str, choices=['gcn', 'gat'], default='gcn',
-                        help='Type of GNN model to use')
+    parser.add_argument('--model', '--model_type', type=str, dest='model_type', 
+                        choices=['gcn', 'gat'], default='gcn',
+                        help='Type of GNN model to use (gcn or gat)')
     parser.add_argument('--hidden_dim', type=int, default=128,
                         help='Dimensionality of hidden layers')
     parser.add_argument('--dropout', type=float, default=0.5,
@@ -37,7 +45,7 @@ def parse_args():
     # Training arguments
     parser.add_argument('--batch_size', type=int, default=32,
                         help='Batch size for training')
-    parser.add_argument('--num_epochs', type=int, default=50,
+    parser.add_argument('--num_epochs', type=int, default=2,
                         help='Number of training epochs')
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='Learning rate')
@@ -72,25 +80,55 @@ def prepare_data(args):
     """Load and prepare the dataset."""
     print("\nLoading and preparing data...")
     
-    # Load dataset
+    # Load the dataset
     dataset = TextDataset(
-        data_path=args.data_path,
+        dataset_name=args.dataset,
+        data_dir='data',
         test_size=args.test_size,
-        val_size=args.val_size,
-        random_state=args.random_state
+        random_state=args.random_state,
+        preprocess=False  # Skip preprocessing for now to avoid NLTK issues
     )
     
-    # Get train/val/test splits
-    X_train, X_val, X_test, y_train, y_val, y_test = dataset.get_splits()
+    # Get dataset splits
+    train_df, test_df = dataset.get_splits(return_dataframe=True)
     
-    # Build vocabulary and graph builder
+    # Further split train into train and validation
+    train_df, val_df = train_test_split(
+        train_df, 
+        test_size=args.val_size,
+        random_state=args.random_state,
+        stratify=train_df['label_id']
+    )
+    
+    # Extract texts and labels
+    X_train = train_df['text'].values
+    X_val = val_df['text'].values
+    X_test = test_df['text'].values
+    
+    y_train = train_df['label_id'].values
+    y_val = val_df['label_id'].values
+    y_test = test_df['label_id'].values
+    
+    # Initialize graph builder
     graph_builder = GraphBuilder(
-        max_nodes=args.max_nodes,
-        window_size=args.window_size
+        min_word_freq=5,  # Minimum word frequency
+        window_size=args.window_size,  # Context window size
+        max_vocab_size=10000  # Maximum vocabulary size
     )
+    
+    # Simple text cleaning before building vocabulary
+    def simple_clean(text):
+        if not isinstance(text, str):
+            text = str(text)
+        return ' '.join(text.lower().split())
+    
+    # Apply simple cleaning
+    X_train = [simple_clean(text) for text in X_train]
+    X_val = [simple_clean(text) for text in X_val]
+    X_test = [simple_clean(text) for text in X_test]
     
     # Build vocabulary on training data
-    graph_builder.build_vocabulary(X_train)
+    graph_builder.build_vocab(X_train)
     
     # Create datasets
     train_dataset = GraphDataset(X_train, y_train, graph_builder)
@@ -99,46 +137,51 @@ def prepare_data(args):
     
     # Create data loaders
     train_loader = DataLoader(
-        train_dataset, 
-        batch_size=args.batch_size, 
+        train_dataset,
+        batch_size=args.batch_size,
         shuffle=True,
         collate_fn=collate_fn
     )
+    
     val_loader = DataLoader(
-        val_dataset, 
-        batch_size=args.batch_size, 
+        val_dataset,
+        batch_size=args.batch_size,
         shuffle=False,
         collate_fn=collate_fn
     )
+    
     test_loader = DataLoader(
-        test_dataset, 
-        batch_size=args.batch_size, 
+        test_dataset,
+        batch_size=args.batch_size,
         shuffle=False,
         collate_fn=collate_fn
     )
     
     return dataset, graph_builder, train_loader, val_loader, test_loader
 
-def create_model(args, input_dim, num_classes, device):
+def create_model(args, vocab_size, num_classes, device):
     """Create the GNN model."""
-    print(f"\nCreating {args.model_type.upper()} model...")
-    
     if args.model_type == 'gcn':
+        print("\nCreating GCN model...")
         model = GCN(
-            input_dim=input_dim,
+            vocab_size=vocab_size,
             hidden_dim=args.hidden_dim,
-            output_dim=num_classes,
+            num_classes=num_classes,
             dropout=args.dropout
         )
-    else:  # GAT
+    elif args.model_type == 'gat':
+        print("\nCreating GAT model...")
         model = GAT(
-            input_dim=input_dim,
+            input_dim=vocab_size,
             hidden_dim=args.hidden_dim,
-            output_dim=num_classes,
+            num_classes=num_classes,
             num_heads=args.num_heads,
             dropout=args.dropout
         )
+    else:
+        raise ValueError(f"Unknown model type: {args.model_type}")
     
+    # Move model to the specified device
     return model.to(device)
 
 def main():
@@ -158,7 +201,10 @@ def main():
     # Get input dimension and number of classes
     input_dim = len(graph_builder.vocab)  # Using vocabulary size as input dimension
     num_classes = dataset.get_num_classes()
-    class_names = [dataset.get_label_map()[i] for i in range(num_classes)]
+    # Get the reverse mapping from label IDs to label names
+    label_map = dataset.get_label_map()
+    id_to_label = {v: k for k, v in label_map.items()}
+    class_names = [id_to_label[i] for i in range(num_classes)]
     
     print(f"\nDataset Info:")
     print(f"  Number of training examples: {len(train_loader.dataset)}")
@@ -190,13 +236,22 @@ def main():
     history_path = os.path.join(args.output_dir, 'training_history.json')
     with open(history_path, 'w') as f:
         import json
-        # Convert numpy arrays to lists for JSON serialization
-        serializable_history = {}
-        for key, value in history.items():
-            if isinstance(value, (np.ndarray, list)):
-                serializable_history[key] = [float(v) for v in value]
+        # Convert numpy arrays and other non-serializable types to Python native types
+        def convert_to_serializable(obj):
+            if isinstance(obj, (np.integer, np.int64)):
+                return int(obj)
+            elif isinstance(obj, (np.floating, np.float64, np.float32)):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {k: convert_to_serializable(v) for k, v in obj.items()}
+            elif isinstance(obj, (list, tuple)):
+                return [convert_to_serializable(x) for x in obj]
             else:
-                serializable_history[key] = value
+                return obj
+                
+        serializable_history = convert_to_serializable(history)
         json.dump(serializable_history, f, indent=4)
     
     # Plot training history

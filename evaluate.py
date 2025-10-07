@@ -10,6 +10,7 @@ from sklearn.metrics import (
     accuracy_score, f1_score, precision_score, recall_score
 )
 from torch_geometric.data import DataLoader
+from torch.utils.data import random_split
 from models.gcn import DocumentGCN
 from models.gat import DocumentGAT
 from data.loader import TextDataset
@@ -18,8 +19,9 @@ from tqdm import tqdm
 import argparse
 
 # Set style for plots
-plt.style.use('seaborn')
-sns.set_palette('colorblind')
+sns.set_theme(style="whitegrid")
+plt.rcParams['figure.figsize'] = (10, 6)
+plt.rcParams['font.size'] = 12
 
 def load_model(model_path, model_type, vocab_size, num_classes, device='cuda'):
     """Load a trained GNN model."""
@@ -37,27 +39,49 @@ def load_model(model_path, model_type, vocab_size, num_classes, device='cuda'):
 
 
 def plot_confusion_matrix(y_true, y_pred, class_names, title='Confusion Matrix', save_path=None):
-    """Plot and save a normalized confusion matrix."""
-    cm = confusion_matrix(y_true, y_pred, labels=class_names)
+    """
+    Plot and save a normalized confusion matrix.
+    
+    Args:
+        y_true: True labels
+        y_pred: Predicted labels
+        class_names: List of class names
+        title: Title for the plot
+        save_path: Path to save the plot
+    """
+    # Convert class names to indices if they're strings
+    if isinstance(y_true[0], str):
+        label_encoder = LabelEncoder()
+        y_true = label_encoder.fit_transform(y_true)
+        y_pred = label_encoder.transform(y_pred)
+        class_names = label_encode.classes_
+    
+    # Filter out any classes that don't appear in y_true
+    present_classes = np.unique(y_true)
+    class_names = [class_names[i] for i in range(len(class_names)) if i in present_classes]
+    
+    # Create confusion matrix
+    cm = confusion_matrix(y_true, y_pred, labels=range(len(class_names)))
+    
+    # Normalize the confusion matrix
     cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
     
-    plt.figure(figsize=(12, 10))
+    plt.figure(figsize=(10, 8))
     sns.heatmap(cm_norm, annot=True, fmt='.2f', cmap='Blues',
                 xticklabels=class_names,
-                yticklabels=class_names,
-                vmin=0, vmax=1)
-    plt.title(title, fontsize=14)
-    plt.ylabel('True Label', fontsize=12)
-    plt.xlabel('Predicted Label', fontsize=12)
+                yticklabels=class_names)
+    plt.title(title)
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     
     if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.close()
     else:
         plt.show()
-
 
 def plot_metrics_comparison(metrics_dict, save_path):
     """Plot comparison of metrics between models."""
@@ -192,32 +216,45 @@ def evaluate_model(model, test_loader, criterion, device, class_names, output_di
     
     with torch.no_grad():
         for batch in tqdm(test_loader, desc="Evaluating"):
+            if batch is None or len(batch) != 3:
+                continue
+                
             data, labels, texts = batch
+            
+            # Skip this batch if data or labels are None (can happen if all graphs in batch are empty)
+            if data is None or labels is None:
+                continue
+                
             data = data.to(device)
             labels = labels.to(device)
             
-            # Forward pass
-            outputs = model(data.x, data.edge_index, data.batch)
+            # Forward pass - pass the entire data object
+            outputs = model(data)
             loss = criterion(outputs, labels)
             
             # Get predictions
             _, preds = torch.max(outputs, 1)
             
             # Store results
-            total_loss += loss.item() * len(labels)
+            batch_size = len(labels)
+            total_loss += loss.item() * batch_size
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
             all_texts.extend(texts)
             
             # Store graphs for visualization
-            for i in range(data.num_graphs):
-                graph = data.get_example(i)
-                all_graphs.append({
-                    'x': graph.x,
-                    'edge_index': graph.edge_index,
-                    'pred': preds[i].item(),
-                    'true': labels[i].item()
-                })
+            if hasattr(data, 'num_graphs') and hasattr(data, 'get_example'):
+                for i in range(data.num_graphs):
+                    try:
+                        graph = data.get_example(i)
+                        all_graphs.append({
+                            'x': graph.x,
+                            'edge_index': graph.edge_index,
+                            'pred': preds[i].item() if i < len(preds) else -1,
+                            'true': labels[i].item() if i < len(labels) else -1
+                        })
+                    except Exception as e:
+                        print(f"Error processing graph {i}: {e}")
     
     # Calculate metrics
     avg_loss = total_loss / len(test_loader.dataset)
@@ -363,10 +400,80 @@ def compare_models(results_dir='results'):
     
     return comparison
 
+def prepare_data_loaders(dataset_name='r8', batch_size=32, test_size=0.2, val_size=0.1):
+    """Prepare data loaders for training, validation, and testing."""
+    # Load dataset
+    dataset = TextDataset(dataset_name=dataset_name)
+    
+    # Split into train/val/test
+    train_val_size = 1 - test_size
+    train_size = 1 - (val_size / train_val_size)
+    
+    train_val, test = random_split(
+        dataset, 
+        [int(len(dataset) * train_val_size), 
+         len(dataset) - int(len(dataset) * train_val_size)]
+    )
+    
+    train, val = random_split(
+        train_val,
+        [int(len(train_val) * train_size), 
+         len(train_val) - int(len(train_val) * train_size)]
+    )
+    
+    # Initialize graph builder
+    graph_builder = GraphBuilder()
+    
+    # Create datasets
+    train_dataset = GraphDataset(
+        [dataset.texts[i] for i in train.indices],
+        [dataset.labels[i] for i in train.indices],
+        graph_builder
+    )
+    
+    val_dataset = GraphDataset(
+        [dataset.texts[i] for i in val.indices],
+        [dataset.labels[i] for i in val.indices],
+        graph_builder
+    )
+    
+    test_dataset = GraphDataset(
+        [dataset.texts[i] for i in test.indices],
+        [dataset.labels[i] for i in test.indices],
+        graph_builder
+    )
+    
+    # Create data loaders
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        collate_fn=collate_fn,
+        num_workers=4
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+        num_workers=4
+    )
+    
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+        num_workers=4
+    )
+    
+    return train_loader, val_loader, test_loader, len(dataset.vocab), len(dataset.label_encoder.classes_)
+
 def main():
     parser = argparse.ArgumentParser(description='Evaluate GNN models for text classification')
-    parser.add_argument('--dataset', type=str, default='r8', choices=['r8', 'mr'],
-                      help='Dataset to evaluate on (r8 or mr)')
+    parser.add_argument('--dataset', type=str, default='20news', choices=['r8', 'mr', '20news'],
+                      help='Dataset to evaluate on (r8, mr, or 20news)')
     parser.add_argument('--batch_size', type=int, default=32,
                       help='Batch size for evaluation')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu',
