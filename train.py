@@ -1,28 +1,24 @@
 import os
 import time
+import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
-from torch_geometric.data import Batch
+import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader, Dataset, random_split
+from torch_geometric.data import Batch, Data
 import numpy as np
 from tqdm import tqdm
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, classification_report
+from sklearn.preprocessing import LabelEncoder
+
+# Import models
+from models.gcn import DocumentGCN
+from models.gat import DocumentGAT
+from data.loader import TextDataset, TextPreprocessor
+from data.graph_builder import GraphBuilder
 
 class GraphDataset(Dataset):
-    """A simple dataset class for graph data."""
-    def __init__(self, texts, labels, graph_builder):
-        self.texts = texts
-        self.labels = labels
-        self.graph_builder = graph_builder
-    
-    def __len__(self):
-        return len(self.texts)
-    
-    def __getitem__(self, idx):
-        text = self.texts[idx]
-        label = self.labels[idx]
-        node_features, edge_index = self.graph_builder.text_to_graph(text)
         return node_features, edge_index, label, text
 
 
@@ -128,44 +124,66 @@ def evaluate(model, loader, criterion, device):
     return avg_loss, accuracy, f1, all_texts, all_preds, all_labels
 
 
+def plot_training_curves(history, model_name, output_dir='results'):
+    """Plot training and validation metrics."""
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Plot loss
+    plt.figure(figsize=(12, 4))
+    
+    plt.subplot(1, 2, 1)
+    plt.plot(history['train_loss'], label='Train Loss')
+    plt.plot(history['val_loss'], label='Validation Loss')
+    plt.title(f'{model_name} - Training & Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    
+    # Plot accuracy
+    plt.subplot(1, 2, 2)
+    plt.plot(history['train_acc'], label='Train Accuracy')
+    plt.plot(history['val_acc'], label='Validation Accuracy')
+    plt.title(f'{model_name} - Training & Validation Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, f'{model_name.lower()}_training_curves.png'))
+    plt.close()
+
 def train_model(model, train_loader, val_loader, test_loader, 
-               num_epochs=10, lr=0.001, device='cuda', 
-               model_save_path='best_model.pt'):
+               num_epochs=50, lr=0.01, device='cuda', 
+               model_save_path='best_model.pt', patience=10):
     """
-    Train and evaluate the model.
+    Train and evaluate the model with early stopping.
     
     Args:
         model: The GNN model to train.
         train_loader: DataLoader for training data.
         val_loader: DataLoader for validation data.
         test_loader: DataLoader for test data.
-        num_epochs: Number of training epochs.
+        num_epochs: Maximum number of training epochs.
         lr: Learning rate.
         device: Device to train on ('cuda' or 'cpu').
         model_save_path: Path to save the best model.
+        patience: Number of epochs to wait before early stopping.
     
     Returns:
-        dict: Training history with loss and metrics.
+        tuple: (best_model, history, test_metrics)
     """
-    # Define loss function and optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     
-    # Learning rate scheduler
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='max', factor=0.5, patience=3, verbose=True
-    )
-    
-    # Initialize training history
     history = {
         'train_loss': [], 'train_acc': [], 'train_f1': [],
-        'val_loss': [], 'val_acc': [], 'val_f1': [],
-        'test_loss': None, 'test_acc': None, 'test_f1': None
+        'val_loss': [], 'val_acc': [], 'val_f1': []
     }
     
     best_val_f1 = 0.0
+    epochs_no_improve = 0
+    best_model = None
     
-    # Training loop
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch+1}/{num_epochs}")
         print("-" * 60)
@@ -180,9 +198,6 @@ def train_model(model, train_loader, val_loader, test_loader,
             model, val_loader, criterion, device
         )
         
-        # Update learning rate
-        scheduler.step(val_f1)
-        
         # Print metrics
         print(f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}")
         print(f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}, F1: {val_f1:.4f}")
@@ -195,9 +210,63 @@ def train_model(model, train_loader, val_loader, test_loader,
         history['val_acc'].append(val_acc)
         history['val_f1'].append(val_f1)
         
-        # Save the best model
+        # Check for improvement
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
+            epochs_no_improve = 0
+            best_model = model.state_dict()
+            torch.save(model.state_dict(), model_save_path)
+            print(f"Model saved to {model_save_path}")
+        else:
+            epochs_no_improve += 1
+            if epochs_no_improve >= patience:
+                print(f"\nEarly stopping triggered after {epoch+1} epochs")
+                break
+    
+    # Load best model for testing
+    model.load_state_dict(best_model)
+    
+    # Evaluate on test set
+    test_loss, test_acc, test_f1, test_texts, test_preds, test_labels = evaluate(
+        model, test_loader, criterion, device
+    )
+    
+    test_metrics = {
+        'loss': test_loss,
+        'accuracy': test_acc,
+        'f1': test_f1,
+        'classification_report': classification_report(test_labels, test_preds, output_dict=True)
+    }
+    
+    return model, history, test_metrics
+            best_val_f1 = val_f1
+            torch.save(model.state_dict(), model_save_path)
+            print(f"Model saved to {model_save_path}")
+            
+            # Early stopping check
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+            if epochs_no_improve >= patience:
+                print(f"\nEarly stopping after {epoch+1} epochs")
+                break
+    
+    # Load best model for testing
+    model.load_state_dict(torch.load(model_save_path))
+    
+    # Final evaluation on test set
+    test_loss, test_acc, test_f1, test_texts, test_preds, test_labels = evaluate(
+        model, test_loader, criterion, device
+    )
+    
+    # Update history with test metrics
+    history['test_loss'] = test_loss
+    history['test_acc'] = test_acc
+    history['test_f1'] = test_f1
+    
+    print(f"\nTest Results - Loss: {test_loss:.4f}, Acc: {test_acc:.4f}, F1: {test_f1:.4f}")
+    
+    return model, history
             torch.save(model.state_dict(), model_save_path)
             print(f"Saved new best model with Val F1: {val_f1:.4f}")
     

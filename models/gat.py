@@ -1,40 +1,74 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GATConv, global_max_pool
+from torch_geometric.nn import GATConv, global_mean_pool
 
-class GAT(nn.Module):
+"""
+Graph Attention Network (GAT) for Document Classification
+
+Key Concepts:
+1. Attention Mechanism: Learns to assign different importance to different words
+   based on their semantic relationships, regardless of distance.
+2. Multi-head Attention: Uses multiple attention heads to capture different types
+   of relationships between words (e.g., syntactic, semantic).
+3. The model excels at capturing long-range dependencies and non-consecutive word
+   relationships that are common in natural language.
+"""
+
+class DocumentGAT(nn.Module):
     """
-    Graph Attention Network for text classification.
+    2-layer Graph Attention Network for document classification.
+    
+    Input: Batch of document graphs
+    - Node features: TF-IDF vectors [num_nodes, vocab_size]
+    - Edge indices: Word co-occurrence connections [2, num_edges]
+    - Batch vector: Maps nodes to their respective documents
+    
+    Output: Class probabilities [batch_size, num_classes]
+    
+    Key Advantages:
+    1. Captures long-range dependencies through attention mechanism
+    2. Handles non-consecutive word relationships effectively
+    3. Learns to focus on important words regardless of their position
     """
-    def __init__(self, input_dim, hidden_dim, output_dim, 
-                 num_heads=4, dropout=0.5):
+    
+    def __init__(self, vocab_size, num_classes, hidden_dim=64, num_heads=4, dropout=0.5):
         """
-        Initialize the GAT model.
+        Initialize the DocumentGAT model.
         
         Args:
-            input_dim (int): Dimensionality of input features.
-            hidden_dim (int): Dimensionality of hidden layers.
-            output_dim (int): Number of output classes.
-            num_heads (int): Number of attention heads.
-            dropout (float): Dropout rate.
+            vocab_size (int): Size of the vocabulary (input dimension)
+            num_classes (int): Number of output classes
+            hidden_dim (int): Hidden dimension size (default: 64)
+            num_heads (int): Number of attention heads in first layer (default: 4)
+            dropout (float): Dropout rate (default: 0.5)
         """
-        super(GAT, self).__init__()
+        super(DocumentGAT, self).__init__()
         
-        # First GAT layer with multiple attention heads
-        self.conv1 = GATConv(input_dim, hidden_dim, 
-                            heads=num_heads, 
-                            dropout=dropout)
+        # First GAT layer with multi-head attention
+        # Each head learns different types of word relationships
+        self.conv1 = GATConv(
+            in_channels=vocab_size,
+            out_channels=hidden_dim // num_heads,  # Split hidden_dim across heads
+            heads=num_heads,
+            dropout=dropout,
+            concat=True  # Concatenate head outputs
+        )
         
         # Second GAT layer with single attention head
-        self.conv2 = GATConv(hidden_dim * num_heads, hidden_dim, 
-                            heads=1, 
-                            dropout=dropout)
+        # Combines information from all previous heads
+        self.conv2 = GATConv(
+            in_channels=hidden_dim,
+            out_channels=hidden_dim,
+            heads=1,  # Single head for final representation
+            dropout=dropout,
+            concat=False
+        )
         
-        # Classifier
-        self.fc = nn.Linear(hidden_dim, output_dim)
+        # Classifier head
+        self.classifier = nn.Linear(hidden_dim, num_classes)
         
-        # Dropout
+        # Regularization
         self.dropout = nn.Dropout(dropout)
         
         # Initialize weights
@@ -48,33 +82,35 @@ class GAT(nn.Module):
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
     
-    def forward(self, x, edge_index, batch=None):
+    def forward(self, data):
         """
-        Forward pass of the GAT model.
+        Forward pass of the DocumentGAT model.
         
         Args:
-            x (torch.Tensor): Node feature matrix [num_nodes, input_dim].
-            edge_index (torch.Tensor): Graph connectivity in COO format [2, num_edges].
-            batch (torch.Tensor, optional): Batch vector [num_nodes] which maps each node to its graph.
-                                          If None, assumes all nodes belong to the same graph.
-        
+            data: PyG Data object containing:
+                - x: Node features [num_nodes, vocab_size]
+                - edge_index: Graph connectivity [2, num_edges]
+                - batch: Batch vector [num_nodes]
+                
         Returns:
-            torch.Tensor: Output logits [batch_size, output_dim].
+            torch.Tensor: Class logits [batch_size, num_classes]
         """
-        # First GAT layer with multiple attention heads
-        x = F.elu(self.conv1(x, edge_index))
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+        
+        # First GAT layer: Multi-head attention
+        # Each head learns different types of word relationships
+        x = F.elu(self.conv1(x, edge_index))  # [num_nodes, hidden_dim]
         x = self.dropout(x)
         
-        # Second GAT layer with single attention head
-        x = F.elu(self.conv2(x, edge_index))
+        # Second GAT layer: Combine information from all heads
+        # Uses a single attention head to create a unified representation
+        x = F.elu(self.conv2(x, edge_index))  # [num_nodes, hidden_dim]
         
-        # Global max pooling to get graph-level representation
-        if batch is not None:
-            x = global_max_pool(x, batch)  # [batch_size, hidden_dim]
-        else:
-            x = x.max(dim=0, keepdim=True)[0]  # [1, hidden_dim] if single graph
+        # Global mean pooling: Aggregate node features into document representation
+        # The attention mechanism ensures important words contribute more to the final representation
+        x = global_mean_pool(x, batch)  # [batch_size, hidden_dim]
         
         # Final classifier
-        x = self.fc(x)
+        x = self.classifier(x)
         
-        return x
+        return F.log_softmax(x, dim=1)  # Return log probabilities for NLLLoss
