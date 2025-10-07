@@ -1,6 +1,21 @@
-# Text Classification with Graph Neural Networks (GNNs)
+# Text Classification with GCN and GAT
 
-This project implements text classification using Graph Neural Networks (GNNs), specifically Graph Convolutional Networks (GCN) and Graph Attention Networks (GAT). The project is designed to be simple, well-documented, and easy to understand for beginners in GNNs and text processing.
+## Team Members
+- [Your Name] - Project Lead, Model Development
+- [Team Member 2] - Data Processing & Visualization
+- [Team Member 3] - Evaluation & Documentation
+
+## Introduction
+
+### What are Graph-of-Words?
+Graph-of-Words is a document representation where words become nodes and their co-occurrence relationships become edges. This captures both local word order and global document structure, making it powerful for text analysis.
+
+### Why GNN for Text Classification?
+- **Captures non-sequential relationships**: Unlike RNNs/CNNs, GNNs can model arbitrary relationships between words
+- **Handles variable-length documents**: Graph structures naturally handle documents of different lengths
+- **Interpretability**: The graph structure provides insights into how words influence classification
+
+This implementation is based on the paper: [Graph Convolutional Networks for Text Classification](https://arxiv.org/abs/1809.05679) (Yao et al., 2019)
 
 ## Features
 
@@ -47,6 +62,7 @@ text-classification-gnn/
 3. Install the required dependencies:
    ```bash
    pip install -r requirements.txt
+   python -m nltk.downloader stopwords
    ```
 
 ## Usage
@@ -117,21 +133,54 @@ The script will create the following files in the output directory:
 - `predictions.json`: Model predictions on the test set
 - `misclassifications.txt`: Analysis of misclassified examples
 
-## Example
+## Quick Start
 
-Here's an example of how to train and evaluate a GAT model on a sample dataset:
-
+### Train and evaluate GCN on R8 dataset:
 ```bash
-# Train a GAT model
-python main.py \
-  --data_path data/sample_data.csv \
-  --model_type gat \
-  --hidden_dim 128 \
-  --num_heads 4 \
-  --batch_size 32 \
-  --num_epochs 20 \
-  --output_dir results/gat_experiment
+python main.py --model gcn --dataset R8
 ```
+
+### Train and evaluate GAT on MR dataset:
+```bash
+python main.py --model gat --dataset MR
+```
+
+## Dataset Information
+
+| Dataset | Description | #Classes | #Samples |
+|---------|-------------|----------|-----------|
+| R8 | 8 news categories | 8 | ~7,674 |
+| MR | Movie reviews sentiment | 2 | ~10,662 |
+
+*Table 1: Dataset statistics from Yao et al. (2019)*
+
+## Architecture Overview
+
+### Text to Graph Conversion
+1. **Node Creation**: Each unique word becomes a node
+2. **Edge Creation**: Words are connected if they co-occur within a sliding window
+3. **Node Features**: TF-IDF weighted word vectors
+4. **Edge Weights**: Pointwise Mutual Information (PMI) scores
+
+### GCN Architecture
+```
+Input Layer (TF-IDF) → GCN Layer 1 (ReLU) → Dropout → 
+GCN Layer 2 → Global Mean Pooling → Output Layer (Softmax)
+```
+
+### GAT Architecture
+```
+Input Layer (TF-IDF) → GAT Layer 1 (4 heads, ELU) → Dropout → 
+GAT Layer 2 (1 head) → Global Mean Pooling → Output Layer (Softmax)
+```
+
+## Results
+*To be updated after experiments*
+
+## References
+1. Yao, L., Mao, C., & Luo, Y. (2019). Graph Convolutional Networks for Text Classification. In *AAAI*.
+2. Kipf, T. N., & Welling, M. (2017). Semi-Supervised Classification with Graph Convolutional Networks. In *ICLR*.
+3. Veličković, P., et al. (2018). Graph Attention Networks. In *ICLR*.
 
 ## Dependencies
 
