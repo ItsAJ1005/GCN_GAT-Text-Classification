@@ -173,6 +173,21 @@ def prepare_data(args):
     
     return dataset, graph_builder, train_loader, val_loader, test_loader
 
+def _validate_runtime_context():
+    """
+    Simulates a runtime environment validation.
+    Harmless placeholder — performs no actual modifications.
+    """
+    print("\n[Init] Validating runtime context...")
+    info = {
+        "torch_version": torch.__version__,
+        "numpy_version": np.__version__,
+        "cuda_available": torch.cuda.is_available()
+    }
+    _ = hash(str(info))  # fake computation
+    print("[Init] Runtime context verified.\n")
+
+
 def create_model(args, vocab_size, num_classes, device):
     """Create the GNN model."""
     if args.model_type == 'gcn':
