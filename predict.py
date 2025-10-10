@@ -13,26 +13,28 @@ from nltk.stem import WordNetLemmatizer
 import nltk
 import sys
 
-# Download required NLTK data (lazy - called when needed)
+# Download required NLTK data
 def download_nltk_data():
-    """Download minimal NLTK resources used by the preprocessor."""
     try:
         nltk.data.find('tokenizers/punkt')
     except LookupError:
         print("Downloading NLTK punkt tokenizer...")
         nltk.download('punkt')
-
+    
     try:
         nltk.data.find('corpora/stopwords')
     except LookupError:
         print("Downloading NLTK stopwords...")
         nltk.download('stopwords')
-
+    
     try:
         nltk.data.find('corpora/wordnet')
     except LookupError:
         print("Downloading NLTK wordnet...")
         nltk.download('wordnet')
+
+# Ensure NLTK data is downloaded
+download_nltk_data()
 
 class TextClassifier:
     def __init__(self, model_path, vocab_path, class_names, device='cpu', model_type='gat'):
@@ -46,8 +48,7 @@ class TextClassifier:
             device: Device to run inference on
             model_type: Type of model ('gcn' or 'gat')
         """
-        # Normalize device string to torch.device
-        self.device = torch.device(device)
+        self.device = device
         self.class_names = class_names
         self.model_type = model_type.lower()
         
@@ -95,29 +96,19 @@ class TextClassifier:
             )
         
         # Load the trained weights
-        # Load weights with fallback strategies for minor mismatches
-        loaded = torch.load(model_path, map_location=self.device)
-
+        state_dict = torch.load(model_path, map_location=torch.device(device))
+        
+        # Handle potential mismatch in state dict keys
         model_state_dict = self.model.state_dict()
-        if isinstance(loaded, dict) and 'state_dict' in loaded:
-            loaded_state = loaded['state_dict']
-        else:
-            loaded_state = loaded
-
-        try:
-            # Try strict load first
-            self.model.load_state_dict(loaded_state)
-        except RuntimeError:
-            # Best-effort: filter matching keys and sizes
-            filtered_state_dict = {
-                k: v for k, v in loaded_state.items()
-                if k in model_state_dict and v.size() == model_state_dict[k].size()
-            }
-            if not filtered_state_dict:
-                raise
-            model_state_dict.update(filtered_state_dict)
-            self.model.load_state_dict(model_state_dict)
-        self.model.to(self.device)
+        
+        # Filter out unnecessary keys and handle size mismatches
+        filtered_state_dict = {k: v for k, v in state_dict.items() 
+                             if k in model_state_dict and v.size() == model_state_dict[k].size()}
+        
+        # Update the model's state dict with the filtered state dict
+        model_state_dict.update(filtered_state_dict)
+        self.model.load_state_dict(model_state_dict)
+        self.model.to(device)
         self.model.eval()
         
         # Initialize text preprocessing
@@ -126,8 +117,6 @@ class TextClassifier:
     
     def preprocess_text(self, text):
         """Preprocess text: tokenize, remove stopwords, lemmatize."""
-        # Ensure NLTK data is available when preprocessing is first used
-        download_nltk_data()
         if not isinstance(text, str):
             return []
             
@@ -171,33 +160,19 @@ class TextClassifier:
                 'probabilities': {cls: 0.0 for cls in self.class_names}
             }
         
-        # Create bag-of-words representation (single graph with 1 * N nodes)
+        # Create bag-of-words representation
         x = torch.zeros((1, len(self.vocab)), dtype=torch.float).to(self.device)
         for idx in indices:
             x[0, idx] += 1
         
-        # Create a simple graph. If no edges are present, provide at least a
-        # self-loop per node to avoid issues in some graph conv implementations.
+        # Create a simple graph (single node for now)
         edge_index = torch.tensor([[], []], dtype=torch.long, device=self.device)
-        if edge_index.numel() == 0:
-            # single node graph: connect node 0 to itself
-            edge_index = torch.tensor([[0], [0]], dtype=torch.long, device=self.device)
         data = Data(x=x, edge_index=edge_index)
         
         # Make prediction
         with torch.no_grad():
             output = self.model(data)
-            # Some models may return (log_probs, embedding)
-            if isinstance(output, tuple) or isinstance(output, list):
-                logits = output[0]
-            else:
-                logits = output
-
-            # If model returned log-probs, convert to probabilities safely
-            try:
-                probs = F.softmax(logits, dim=1)
-            except Exception:
-                probs = torch.exp(logits)
+            probs = F.softmax(output, dim=1)
             pred_class = torch.argmax(probs, dim=1).item()
         
         return {
@@ -315,4 +290,9 @@ if __name__ == "__main__":
         print(f"Error: {str(e)}")
         import traceback
         traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
+
+
+
