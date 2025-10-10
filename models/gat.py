@@ -44,7 +44,7 @@ class DocumentGAT(nn.Module):
             num_heads (int): Number of attention heads in first layer (default: 8)
             dropout (float): Dropout rate (default: 0.3)
         """
-        super(DocumentGAT, self).__init__()
+        super(DocumentGAT, self)._init_()
         
         # Input projection
         self.input_proj = nn.Linear(vocab_size, hidden_dim)
@@ -144,5 +144,5 @@ class DocumentGAT(nn.Module):
         
         # Final classification with improved head
         x = self.classifier(x)
-        
+
         return F.log_softmax(x, dim=1)  # Return log probabilities for NLLLoss

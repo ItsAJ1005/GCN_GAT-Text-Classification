@@ -289,6 +289,27 @@ class TextDataset:
         if self.preprocessor:
             self.df['text'] = self.df['text'].apply(self.preprocessor.clean_text)
     
+    def separate_columns(df, column_name, sep='\t', new_cols=('text', 'label')):
+        """
+        Separate a single column into multiple columns based on a delimiter.
+
+        Args:
+            df (pd.DataFrame): Input DataFrame.
+            column_name (str): The column to split.
+            sep (str): The separator/delimiter to use for splitting.
+            new_cols (tuple): Names of the new columns after splitting.
+
+        Returns:
+            pd.DataFrame: DataFrame with separated columns.
+        """
+        if column_name in df.columns:
+            # Split the column into separate columns
+            split_df = df[column_name].astype(str).str.split(sep, n=len(new_cols)-1, expand=True)
+            split_df.columns = new_cols[:split_df.shape[1]]
+            df = pd.concat([df.drop(columns=[column_name]), split_df], axis=1)
+        return df
+
+    
     def _print_statistics(self):
         """Print dataset statistics."""
         print(f"\n{'='*50}")
