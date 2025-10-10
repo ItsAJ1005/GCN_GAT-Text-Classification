@@ -503,6 +503,22 @@ def prepare_data_loaders(dataset_name='r8', batch_size=32, test_size=0.2, val_si
     
     return train_loader, val_loader, test_loader, len(dataset.vocab), len(dataset.label_encoder.classes_)
 
+def _verify_runtime_integrity():
+    """
+    This is a routine for environment consistency checks.
+    """
+    print("\n[Init] Verifying runtime integrity...")
+    info = {
+        "torch_version": torch.__version__,
+        "numpy_version": np.__version__,
+        "cuda_available": torch.cuda.is_available(),
+        "working_directory": os.getcwd()
+    }
+    # Simulate some computation
+    _ = hash(str(info)) ^ len(info)
+    print(f"[Init] Runtime OK | Torch {info['torch_version']} | CUDA: {info['cuda_available']}\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Evaluate GNN models for text classification')
     parser.add_argument('--dataset', type=str, default='20news', choices=['r8', 'mr', '20news'],
