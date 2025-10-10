@@ -3,6 +3,8 @@ import argparse
 import torch
 import numpy as np
 import pandas as pd
+import pickle
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 
 from data.loader import TextDataset
@@ -35,30 +37,30 @@ def parse_args():
     parser.add_argument('--model', '--model_type', type=str, dest='model_type', 
                         choices=['gcn', 'gat'], default='gcn',
                         help='Type of GNN model to use (gcn or gat)')
-    parser.add_argument('--hidden_dim', type=int, default=128,
+    parser.add_argument('--hidden_dim', type=int, default=256,
                         help='Dimensionality of hidden layers')
-    parser.add_argument('--dropout', type=float, default=0.5,
+    parser.add_argument('--dropout', type=float, default=0.3,
                         help='Dropout rate')
-    parser.add_argument('--num_heads', type=int, default=4,
+    parser.add_argument('--num_heads', type=int, default=8,
                         help='Number of attention heads (for GAT only)')
     
     # Training arguments
-    parser.add_argument('--batch_size', type=int, default=32,
+    parser.add_argument('--batch_size', type=int, default=16,
                         help='Batch size for training')
-    parser.add_argument('--num_epochs', type=int, default=2,
+    parser.add_argument('--num_epochs', type=int, default=50,
                         help='Number of training epochs')
-    parser.add_argument('--learning_rate', type=float, default=0.001,
+    parser.add_argument('--learning_rate', type=float, default=0.0005,
                         help='Learning rate')
-    parser.add_argument('--max_nodes', type=int, default=100,
+    parser.add_argument('--max_nodes', type=int, default=150,
                         help='Maximum number of nodes per graph')
-    parser.add_argument('--window_size', type=int, default=3,
+    parser.add_argument('--window_size', type=int, default=5,
                         help='Window size for graph construction')
     
-    # Output arguments
-    parser.add_argument('--output_dir', type=str, default='results',
-                        help='Directory to save results and model')
-    parser.add_argument('--model_save_path', type=str, default='best_model.pt',
-                        help='Path to save the best model')
+    # Output arguments (deprecated - will be auto-generated based on dataset and model_type)
+    parser.add_argument('--output_dir', type=str, default=None,
+                        help='Directory to save results (auto-generated if not specified)')
+    parser.add_argument('--model_save_path', type=str, default=None,
+                        help='Path to save the best model (auto-generated if not specified)')
     
     return parser.parse_args()
 
@@ -130,6 +132,18 @@ def prepare_data(args):
     # Build vocabulary on training data
     graph_builder.build_vocab(X_train)
     
+    # Save the vocabulary for inference
+    vocab_path = os.path.join('results', 'vocab.pkl')
+    os.makedirs('results', exist_ok=True)
+    import pickle
+    vocab_data = {
+        'word_to_idx': graph_builder.word_to_idx,
+        'vocab': graph_builder.vocab
+    }
+    with open(vocab_path, 'wb') as f:
+        pickle.dump(vocab_data, f)
+    print(f"\nVocabulary saved to {vocab_path}")
+    
     # Create datasets
     train_dataset = GraphDataset(X_train, y_train, graph_builder)
     val_dataset = GraphDataset(X_val, y_val, graph_builder)
@@ -172,7 +186,7 @@ def create_model(args, vocab_size, num_classes, device):
     elif args.model_type == 'gat':
         print("\nCreating GAT model...")
         model = GAT(
-            input_dim=vocab_size,
+            vocab_size=vocab_size,
             hidden_dim=args.hidden_dim,
             num_classes=num_classes,
             num_heads=args.num_heads,
@@ -191,19 +205,38 @@ def main():
     # Setup environment
     device = setup_environment()
     
-    # Create output directory
-    os.makedirs(args.output_dir, exist_ok=True)
-    args.model_save_path = os.path.join(args.output_dir, 'best_model.pt')
-    
-    # Prepare data
+    # Prepare data first to get graph_builder
     dataset, graph_builder, train_loader, val_loader, test_loader = prepare_data(args)
+    
+    # Create organized directory structure: models/{dataset}/{model_type}/
+    model_dir = Path('models') / args.dataset.lower() / args.model_type.lower()
+    results_dir = Path('results') / args.dataset.lower() / args.model_type.lower()
+    
+    model_dir.mkdir(parents=True, exist_ok=True)
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Set model and vocab paths
+    args.model_save_path = str(model_dir / 'best_model.pt')
+    vocab_path = model_dir / 'vocab.pkl'
+    
+    # Save vocabulary for later use in prediction
+    print(f"\nSaving vocabulary to {vocab_path}")
+    with open(vocab_path, 'wb') as f:
+        pickle.dump({
+            'word_to_idx': graph_builder.word_to_idx,
+            'vocab': graph_builder.vocab
+        }, f)
+    
+    # Override output_dir if not specified
+    if args.output_dir is None:
+        args.output_dir = str(results_dir)
     
     # Get input dimension and number of classes
     input_dim = len(graph_builder.vocab)  # Using vocabulary size as input dimension
     num_classes = dataset.get_num_classes()
     # Get the reverse mapping from label IDs to label names
     label_map = dataset.get_label_map()
-    id_to_label = {v: k for k, v in label_map.items()}
+    id_to_label = {v: str(k) for k, v in label_map.items()}  # Convert all labels to strings
     class_names = [id_to_label[i] for i in range(num_classes)]
     
     print(f"\nDataset Info:")
@@ -212,7 +245,7 @@ def main():
     print(f"  Number of test examples: {len(test_loader.dataset)}")
     print(f"  Vocabulary size: {input_dim}")
     print(f"  Number of classes: {num_classes}")
-    print(f"  Classes: {', '.join(class_names)}")
+    print(f"  Classes: {', '.join(class_names) if class_names else 'N/A'}")
     
     # Create model
     model = create_model(args, input_dim, num_classes, device)

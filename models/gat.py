@@ -77,10 +77,11 @@ class DocumentGAT(nn.Module):
     def _init_weights(self):
         """Initialize weights with xavier uniform and zeros for biases."""
         for m in self.modules():
-            if isinstance(m, (GATConv, nn.Linear)):
+            if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
+            # GATConv layers handle their own initialization
     
     def forward(self, data):
         """

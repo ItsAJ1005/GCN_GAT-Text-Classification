@@ -74,7 +74,8 @@ class TextDataset:
     
     DATASETS = {
         '20news': {
-            'categories': ['sci.space', 'comp.graphics', 'rec.sport.baseball', 'talk.politics.mideast'],
+            # 'categories': ['sci.space', 'comp.graphics', 'rec.sport.baseball', 'talk.politics.mideast'],
+            'categories': None,
             'subset': 'all',  # 'all', 'train', or 'test'
             'shuffle': True,
             'random_state': 42,
@@ -115,6 +116,117 @@ class TextDataset:
         # Load and preprocess the dataset
         self._load_dataset()
         self._print_statistics()
+    
+    def _load_dataset(self):
+        """Load the specified dataset."""
+        if self.dataset_name == '20news':
+            self.df = self._load_20news()
+        elif self.dataset_name == 'mr':
+            self.df = self._load_mr()
+        else:
+            raise ValueError(f"Unsupported dataset: {self.dataset_name}")
+        
+        # Create label map
+        self.label_map = {label: i for i, label in enumerate(sorted(self.df['label'].unique()))}
+        self.df['label_id'] = self.df['label'].map(self.label_map)
+        
+        # Preprocess text if needed
+        if self.preprocessor:
+            self.df['text'] = self.df['text'].apply(self.preprocessor.clean_text)
+    
+    def _load_mr(self):
+        """Load the MR dataset from the preprocessed MR.csv file."""
+        dataset_info = self.DATASETS['mr']
+        csv_path = os.path.join(self.data_dir, dataset_info['extract_dir'], 'MR.csv')
+        
+        # Check if the CSV file exists
+        if os.path.exists(csv_path):
+            # If CSV exists, load it directly
+            df = pd.read_csv(csv_path)
+            
+            # Handle different possible column names
+            text_columns = ['text', 'sentence', 'review', 'content']
+            label_columns = ['label', 'sentiment', 'class']
+            
+            # Find text column
+            text_col = next((col for col in text_columns if col in df.columns), None)
+            if text_col is None and len(df.columns) > 0:
+                # If no standard text column found, use the first non-label column
+                label_cols = [col for col in label_columns if col in df.columns]
+                text_col = [col for col in df.columns if col not in label_cols][0]
+            
+            # Find label column
+            label_col = next((col for col in label_columns if col in df.columns), None)
+            if label_col is None and len(df.columns) > 0:
+                # If no standard label column found, try to infer it
+                if 'label' in df.columns:
+                    label_col = 'label'
+                elif len(df.columns) > 1 and text_col is not None:
+                    # If we have a text column, use the other column as label
+                    label_col = [col for col in df.columns if col != text_col][0]
+                else:
+                    # Default to 'label' and create it if needed
+                    label_col = 'label'
+                    df[label_col] = 0  # Default label
+            
+            # Standardize column names
+            if text_col != 'text' and text_col is not None:
+                df = df.rename(columns={text_col: 'text'})
+            if label_col != 'label' and label_col is not None:
+                df = df.rename(columns={label_col: 'label'})
+            
+            # Ensure text column exists
+            if 'text' not in df.columns and len(df.columns) > 0:
+                df['text'] = df[df.columns[0]].astype(str)
+            
+            # Ensure label column exists and is numeric
+            if 'label' not in df.columns:
+                df['label'] = 0  # Default label if none found
+            else:
+                # Convert labels to 0/1 if they're strings
+                if df['label'].dtype == 'object':
+                    unique_labels = df['label'].unique()
+                    if len(unique_labels) == 2:
+                        # Map to 0/1 if binary classification
+                        label_map = {label: i for i, label in enumerate(unique_labels)}
+                        df['label'] = df['label'].map(label_map)
+            
+            return df
+        else:
+            # If CSV doesn't exist, try to download and process the original files
+            self._download_dataset()
+            
+            pos_file = os.path.join(self.data_dir, dataset_info['extract_dir'], dataset_info['pos_file'])
+            neg_file = os.path.join(self.data_dir, dataset_info['extract_dir'], dataset_info['neg_file'])
+            
+            if not (os.path.exists(pos_file) and os.path.exists(neg_file)):
+                # If original files don't exist but we have MR.csv, try loading it with different parameters
+                if os.path.exists(os.path.join(self.data_dir, 'movie_review', 'MR.csv')):
+                    df = pd.read_csv(os.path.join(self.data_dir, 'movie_review', 'MR.csv'))
+                    if 'label' not in df.columns and 'sentiment' in df.columns:
+                        df = df.rename(columns={'sentiment': 'label'})
+                    return df
+                raise FileNotFoundError(
+                    f"Could not find MR dataset files. Please ensure either {csv_path} exists, "
+                    f"or the original files {pos_file} and {neg_file} are available."
+                )
+            
+            # Read positive and negative reviews
+            with open(pos_file, 'r', encoding='latin1') as f:
+                pos_data = [line.strip() for line in f if line.strip()]
+            
+            with open(neg_file, 'r', encoding='latin1') as f:
+                neg_data = [line.strip() for line in f if line.strip()]
+            
+            # Create DataFrame with proper labels
+            df_pos = pd.DataFrame({'text': pos_data, 'label': 'positive'})
+            df_neg = pd.DataFrame({'text': neg_data, 'label': 'negative'})
+            
+            # Combine and save as CSV for future use
+            df = pd.concat([df_pos, df_neg], ignore_index=True)
+            os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+            df.to_csv(csv_path, index=False)
+            return df
     
     def _download_dataset(self):
         """Download and extract the dataset if not already present."""
@@ -158,39 +270,13 @@ class TextDataset:
         })
         
         return df
-        
-    def _load_mr(self):
-        """Load the MR dataset."""
         dataset_info = self.DATASETS['mr']
+        csv_path = os.path.join(self.data_dir, dataset_info['extract_dir'], 'MR.csv')
         
-        # Create data directory if it doesn't exist
-        os.makedirs(os.path.join(self.data_dir, dataset_info['extract_dir']), exist_ok=True)
-        
-        # Download and extract the dataset if needed
-        self._download_dataset()
-        
-        pos_file = os.path.join(self.data_dir, dataset_info['extract_dir'], dataset_info['pos_file'])
-        neg_file = os.path.join(self.data_dir, dataset_info['extract_dir'], dataset_info['neg_file'])
-        
-        # Read positive and negative reviews
-        with open(pos_file, 'r', encoding='latin1') as f:
-            pos_data = [line.strip() for line in f]
-        
-        neg_data = []
-        with open(neg_file, 'r', encoding='latin1') as f:
-            neg_data = [line.strip() for line in f]
-        
-        # Create DataFrame
-        df_pos = pd.DataFrame({'text': pos_data, 'label': 'positive'})
-        df_neg = pd.DataFrame({'text': neg_data, 'label': 'negative'})
-        
-        return pd.concat([df_pos, df_neg], ignore_index=True)
-        
-    def _load_dataset(self):
-        """Load the specified dataset."""
-        if self.dataset_name == '20news':
-            self.df = self._load_20news()
-        elif self.dataset_name == 'mr':
+        # Check if the CSV file exists
+        if not os.path.exists(csv_path):
+            # If CSV doesn't exist, try to download and process the original files
+            self._download_dataset()
             self.df = self._load_mr()
         else:
             raise ValueError(f"Unsupported dataset: {self.dataset_name}")
@@ -210,19 +296,26 @@ class TextDataset:
         print(f"{'='*50}")
         print(f"Total samples: {len(self.df):,}")
         print(f"Number of classes: {len(self.label_map)}")
-        print(f"Classes: {', '.join(self.label_map.keys())}")
         
-        # Calculate and print average text length
-        text_lengths = self.df['text'].apply(lambda x: len(x.split()))
-        print(f"Average text length: {text_lengths.mean():.1f} words")
-        print(f"Min text length: {text_lengths.min()} words")
-        print(f"Max text length: {text_lengths.max()} words")
+        # Convert label keys to strings before joining
+        label_names = [str(label) for label in self.label_map.keys()]
+        print(f"Classes: {', '.join(label_names)}")
         
-        # Print class distribution
-        print("\nClass distribution:")
-        class_dist = self.df['label'].value_counts().sort_index()
-        for label, count in class_dist.items():
-            print(f"- {label}: {count:,} samples ({count/len(self.df)*100:.1f}%)")
+        try:
+            # Calculate and print average text length
+            text_lengths = self.df['text'].apply(lambda x: len(str(x).split()))
+            print(f"Average text length: {text_lengths.mean():.1f} words")
+            print(f"Min text length: {text_lengths.min()} words")
+            print(f"Max text length: {text_lengths.max()} words")
+            
+            # Print class distribution
+            print("\nClass distribution:")
+            class_dist = self.df['label'].value_counts().sort_index()
+            for label, count in class_dist.items():
+                print(f"- {label}: {count:,} samples ({count/len(self.df)*100:.1f}%)")
+        except Exception as e:
+            print(f"\nWarning: Could not calculate all statistics: {str(e)}")
+            print("This is likely due to data format issues. Continuing...")
         print("="*50 + "\n")
     
     def get_splits(self, return_dataframe=True):

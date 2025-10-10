@@ -94,7 +94,7 @@ optional arguments:
   --batch_size BATCH_SIZE
                         Batch size for training (default: 32)
   --num_epochs NUM_EPOCHS
-                        Number of training epochs (default: 50)
+                        Number of training epochs (default: 10)
   --learning_rate LEARNING_RATE
                         Learning rate (default: 0.001)
   --max_nodes MAX_NODES
@@ -149,8 +149,8 @@ python main.py --model gat --dataset MR
 
 | Dataset | Description | #Classes | #Samples |
 |---------|-------------|----------|-----------|
-| R8 | 8 news categories | 8 | ~7,674 |
-| MR | Movie reviews sentiment | 2 | ~10,662 |
+| R8      | 8 news categories | 8 | ~7,674 |
+| MR      | Movie reviews sentiment | 2 | ~10,662 |
 
 *Table 1: Dataset statistics from Yao et al. (2019)*
 

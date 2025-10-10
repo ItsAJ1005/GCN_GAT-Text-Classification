@@ -204,8 +204,8 @@ def plot_training_curves(history, model_name, output_dir='results'):
     plt.close()
 
 def train_model(model, train_loader, val_loader, test_loader, 
-               num_epochs=50, lr=0.01, device='cuda', 
-               model_save_path='best_model.pt', patience=10):
+               num_epochs=50, lr=0.0005, device='cuda', 
+               model_save_path='best_model.pt', patience=7):
     """
     Train and evaluate the model with early stopping.
     
@@ -218,7 +218,7 @@ def train_model(model, train_loader, val_loader, test_loader,
         lr: Learning rate.
         device: Device to train on ('cuda' or 'cpu').
         model_save_path: Path to save the best model.
-        patience: Number of epochs to wait before early stopping.
+        patience: Number of epochs to wait before early stopping (default: 5).
     
     Returns:
         tuple: (best_model, history, test_metrics)
@@ -226,8 +226,9 @@ def train_model(model, train_loader, val_loader, test_loader,
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
+    best_loss = float('inf')
     best_val_f1 = 0.0
-    epochs_no_improve = 0
+    patience_counter = 0
     best_model = None
     
     history = {
@@ -261,17 +262,23 @@ def train_model(model, train_loader, val_loader, test_loader,
         print(f"  Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}")
         print(f"  Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}, F1: {val_f1:.4f}")
         
-        if val_f1 > best_val_f1:
+        # Save model if validation loss improves
+        if val_loss < best_loss:
+            best_loss = val_loss
             best_val_f1 = val_f1
             best_model = model.state_dict().copy()
             torch.save(model.state_dict(), model_save_path)
-            print(f"Model saved to {model_save_path}")
-            epochs_no_improve = 0
+            print(f"Model saved to {model_save_path} (Val Loss: {val_loss:.4f})")
+            patience_counter = 0
         else:
-            epochs_no_improve += 1
-            if epochs_no_improve >= patience:
-                print(f"\nEarly stopping triggered after {epoch+1} epochs")
-                break
+            patience_counter += 1
+            print(f"No improvement. Patience: {patience_counter}/{patience}")
+        
+        # Early stopping check
+        if patience_counter >= patience:
+            print(f"\nEarly stopping triggered after {epoch+1} epochs")
+            print(f"Best validation loss: {best_loss:.4f}")
+            break
     
     model.load_state_dict(torch.load(model_save_path))
     

@@ -102,29 +102,62 @@ def plot_metrics_comparison(metrics_dict, save_path):
     
     # Add value labels
     for p in ax.patches:
-        ax.annotate(f"{p.get_height():.3f}", 
-                   (p.get_x() + p.get_width() / 2., p.get_height()),
-                   ha='center', va='center', 
-                   xytext=(0, 10), 
-                   textcoords='offset points')
+        ax.annotate(
+            f"{p.get_height():.3f}",
+            (p.get_x() + p.get_width() / 2., p.get_height()),
+            ha='center',
+            va='center',
+            xytext=(0, 10),
+            textcoords='offset points'
+        )
     
     plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.close()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
 
-def plot_sample_graph(graph, pred_label, true_label, class_names, save_path):
-    """Visualize a sample graph with prediction."""
-    import networkx as nx
+
+def plot_sample_graph(graph_data, pred_label, true_label, class_names, save_path):
+    """
+    Visualize a sample graph with prediction.
     
-    # Create NetworkX graph
+    Args:
+        graph_data: Either a PyG Data object or a dictionary containing:
+                   - 'x': Node features
+                   - 'edge_index': Edge indices
+        pred_label: Predicted class label
+        true_label: True class label
+        class_names: List of class names
+        save_path: Path to save the plot
+    """
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    
     G = nx.Graph()
     
+    # Handle both PyG Data object and dictionary inputs
+    if hasattr(graph_data, 'x'):
+        # PyG Data object
+        x = graph_data.x
+        edge_index = graph_data.edge_index.cpu().numpy()
+    elif isinstance(graph_data, dict):
+        # Dictionary input
+        x = graph_data['x']
+        edge_index = graph_data['edge_index']
+        if isinstance(edge_index, torch.Tensor):
+            edge_index = edge_index.cpu().numpy()
+    else:
+        raise ValueError("Unsupported input type for graph_data")
+    
     # Add nodes with their features
-    for i, feat in enumerate(graph.x):
-        G.add_node(i, weight=float(torch.sum(feat)))
+    for i, feat in enumerate(x):
+        feat_sum = float(torch.sum(feat)) if hasattr(feat, 'sum') else float(np.sum(feat))
+        G.add_node(i, weight=feat_sum)
     
     # Add edges
-    edge_index = graph.edge_index.cpu().numpy()
     for i in range(edge_index.shape[1]):
         G.add_edge(edge_index[0, i], edge_index[1, i])
     
