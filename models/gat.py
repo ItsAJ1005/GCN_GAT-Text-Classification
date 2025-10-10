@@ -17,7 +17,7 @@ Key Concepts:
 
 class DocumentGAT(nn.Module):
     """
-    2-layer Graph Attention Network for document classification.
+    Enhanced 2-layer Graph Attention Network for document classification.
     
     Input: Batch of document graphs
     - Node features: TF-IDF vectors [num_nodes, vocab_size]
@@ -26,47 +26,69 @@ class DocumentGAT(nn.Module):
     
     Output: Class probabilities [batch_size, num_classes]
     
-    Key Advantages:
-    1. Captures long-range dependencies through attention mechanism
-    2. Handles non-consecutive word relationships effectively
-    3. Learns to focus on important words regardless of their position
+    Improvements:
+    1. Residual connections for better gradient flow
+    2. Layer normalization for stable training
+    3. Multi-head attention with scaled dot-product attention
+    4. Improved feature aggregation
     """
     
-    def __init__(self, vocab_size, num_classes, hidden_dim=64, num_heads=4, dropout=0.5):
+    def __init__(self, vocab_size, num_classes, hidden_dim=256, num_heads=8, dropout=0.3):
         """
         Initialize the DocumentGAT model.
         
         Args:
             vocab_size (int): Size of the vocabulary (input dimension)
             num_classes (int): Number of output classes
-            hidden_dim (int): Hidden dimension size (default: 64)
-            num_heads (int): Number of attention heads in first layer (default: 4)
-            dropout (float): Dropout rate (default: 0.5)
+            hidden_dim (int): Hidden dimension size (default: 256)
+            num_heads (int): Number of attention heads in first layer (default: 8)
+            dropout (float): Dropout rate (default: 0.3)
         """
         super(DocumentGAT, self).__init__()
         
+        # Input projection
+        self.input_proj = nn.Linear(vocab_size, hidden_dim)
+        
         # First GAT layer with multi-head attention
-        # Each head learns different types of word relationships
         self.conv1 = GATConv(
-            in_channels=vocab_size,
-            out_channels=hidden_dim // num_heads,  # Split hidden_dim across heads
+            in_channels=hidden_dim,
+            out_channels=hidden_dim // num_heads,
             heads=num_heads,
             dropout=dropout,
-            concat=True  # Concatenate head outputs
+            concat=True,  # Concatenate head outputs
+            add_self_loops=True  # Add self-loops for better message passing
         )
         
-        # Second GAT layer with single attention head
-        # Combines information from all previous heads
+        # Layer normalization after first GAT layer
+        self.norm1 = nn.LayerNorm(hidden_dim)
+        
+        # Second GAT layer with multi-head attention
         self.conv2 = GATConv(
             in_channels=hidden_dim,
-            out_channels=hidden_dim,
-            heads=1,  # Single head for final representation
+            out_channels=hidden_dim // (num_heads//2),
+            heads=num_heads//2,  # Reduce heads in second layer
             dropout=dropout,
-            concat=False
+            concat=True,
+            add_self_loops=True
         )
         
-        # Classifier head
-        self.classifier = nn.Linear(hidden_dim, num_classes)
+        # Layer normalization after second GAT layer
+        self.norm2 = nn.LayerNorm(hidden_dim)
+        
+        # Feature fusion layer
+        self.fusion = nn.Sequential(
+            nn.Linear(hidden_dim * 2, hidden_dim),  # Combine skip connection
+            nn.ReLU(),
+            nn.Dropout(dropout)
+        )
+        
+        # Classifier head with improved architecture
+        self.classifier = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim // 2, num_classes)
+        )
         
         # Regularization
         self.dropout = nn.Dropout(dropout)
@@ -85,7 +107,7 @@ class DocumentGAT(nn.Module):
     
     def forward(self, data):
         """
-        Forward pass of the DocumentGAT model.
+        Enhanced forward pass of the DocumentGAT model.
         
         Args:
             data: PyG Data object containing:
@@ -98,20 +120,29 @@ class DocumentGAT(nn.Module):
         """
         x, edge_index, batch = data.x, data.edge_index, data.batch
         
-        # First GAT layer: Multi-head attention
-        # Each head learns different types of word relationships
-        x = F.elu(self.conv1(x, edge_index))  # [num_nodes, hidden_dim]
-        x = self.dropout(x)
+        # Initial feature projection
+        x = self.input_proj(x)
+        input_features = x  # Save for residual connection
         
-        # Second GAT layer: Combine information from all heads
-        # Uses a single attention head to create a unified representation
-        x = F.elu(self.conv2(x, edge_index))  # [num_nodes, hidden_dim]
+        # First GAT layer with multi-head attention and residual connection
+        attn_out = F.elu(self.conv1(x, edge_index))
+        attn_out = self.dropout(attn_out)
+        x = self.norm1(attn_out + x)  # Residual connection and normalization
         
-        # Global mean pooling: Aggregate node features into document representation
-        # The attention mechanism ensures important words contribute more to the final representation
-        x = global_mean_pool(x, batch)  # [batch_size, hidden_dim]
+        # Second GAT layer with reduced heads and residual connection
+        attn_out = F.elu(self.conv2(x, edge_index))
+        attn_out = self.dropout(attn_out)
+        x = self.norm2(attn_out + x)  # Residual connection and normalization
         
-        # Final classifier
+        # Global attention pooling
+        x_global = global_mean_pool(x, batch)  # [batch_size, hidden_dim]
+        
+        # Combine global and local features with skip connection
+        x_skip = global_mean_pool(input_features, batch)  # Skip connection from input
+        x_combined = torch.cat([x_global, x_skip], dim=-1)  # Concatenate features
+        x = self.fusion(x_combined)  # Fuse features
+        
+        # Final classification with improved head
         x = self.classifier(x)
         
         return F.log_softmax(x, dim=1)  # Return log probabilities for NLLLoss

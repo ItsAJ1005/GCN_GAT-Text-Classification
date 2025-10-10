@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -215,44 +216,92 @@ class GraphBuilder:
                         self.cooccurrence[word1][word2] += 1
                         self.total_windows += 1
     
-    def text_to_graph(self, text, min_pmi=0.0):
+    def text_to_graph(self, text, min_pmi=0.1):
         """
-        Convert a single text document into a graph representation.
+        Enhanced text to graph conversion with improved edge weighting and node features.
         
         Args:
             text (str): Input text document
-            min_pmi (float): Not used, kept for backward compatibility
+            min_pmi (float): Minimum PMI threshold for edge creation
             
         Returns:
             tuple: (node_features, edge_index, edge_weights)
-                - node_features: Tensor of shape (num_nodes, vocab_size) with one-hot encoded word indices
-                - edge_index: Tensor of shape (2, num_edges) with edge connections
-                - edge_weights: Tensor of shape (num_edges,) with edge weights based on co-occurrence
+                - node_features: TF-IDF weighted node features
+                - edge_index: Graph connectivity
+                - edge_weights: PMI-based edge weights
         """
-        # Preprocess text and get tokens
+        # Preprocess text and get tokens with position information
         tokens = self.preprocess_text(text)
+        token_positions = list(enumerate(tokens))
         
-        # Get unique words in the document that are in our vocabulary
-        unique_words = list(set([word for word in tokens if word in self.word_to_idx]))
+        # Get unique words that are in our vocabulary
+        word_positions = defaultdict(list)
+        for pos, token in token_positions:
+            if token in self.word_to_idx:
+                word_positions[token].append(pos)
+                
+        unique_words = list(word_positions.keys())
         num_nodes = len(unique_words)
         
         if num_nodes == 0:
             # Return empty graph with a single node
             return (
-                torch.zeros((1, len(self.vocab))),  # One node with zero features
+                torch.zeros((1, len(self.vocab)), dtype=torch.float),
                 torch.zeros((2, 0), dtype=torch.long),
-                torch.zeros(0)
+                torch.zeros(0, dtype=torch.float)
             )
         
-        # Create one-hot encoded node features
+        # Create TF-IDF weighted node features
         node_features = torch.zeros((num_nodes, len(self.vocab)), dtype=torch.float)
-        for i, word in enumerate(unique_words):
-            if word in self.word_to_idx:
-                node_features[i, self.word_to_idx[word]] = 1.0
+        word_to_node = {word: i for i, word in enumerate(unique_words)}
         
-        # Create edges based on co-occurrence within a window
+        # Calculate term frequencies
+        doc_length = len(tokens)
+        for word, positions in word_positions.items():
+            node_idx = word_to_node[word]
+            word_idx = self.word_to_idx[word]
+            tf = len(positions) / doc_length  # Normalized term frequency
+            
+            if word in self.word_freq:
+                # Use pre-computed IDF if available
+                total_docs = sum(1 for w_freq in self.word_freq.values() if w_freq > 0)
+                idf = math.log(total_docs / (self.word_freq[word] + 1))
+            else:
+                idf = 1.0  # Default IDF if word not in training corpus
+                
+            node_features[node_idx, word_idx] = tf * idf
+        
+        # Create edges based on positional and semantic information
         edges = []
         edge_weights = []
+        
+        # Build co-occurrence graph with positional weighting
+        for i, word1 in enumerate(unique_words):
+            word1_positions = word_positions[word1]
+            
+            for j, word2 in enumerate(unique_words):
+                if i != j:  # Avoid self-loops
+                    word2_positions = word_positions[word2]
+                    
+                    # Calculate PMI-based edge weight
+                    pmi = self.calculate_pmi(word1, word2)
+                    
+                    if pmi > min_pmi:
+                        # Calculate positional weight based on minimum distance
+                        min_dist = float('inf')
+                        for pos1 in word1_positions:
+                            for pos2 in word2_positions:
+                                dist = abs(pos1 - pos2)
+                                if dist <= self.window_size:
+                                    min_dist = min(min_dist, dist)
+                        
+                        if min_dist <= self.window_size:
+                            # Combine PMI and positional weights
+                            pos_weight = 1.0 / (min_dist + 1)  # Add 1 to avoid division by zero
+                            edge_weight = pmi * pos_weight
+                            
+                            edges.extend([[i, j], [j, i]])  # Add bidirectional edges
+                            edge_weights.extend([edge_weight, edge_weight])
         
         # Create a local co-occurrence matrix for this document
         local_cooccurrence = defaultdict(lambda: defaultdict(int))
@@ -268,33 +317,85 @@ class GraphBuilder:
                     local_cooccurrence[word1][word2] += 1
                     local_cooccurrence[word2][word1] += 1  # Undirected graph
         
-        # Create a mapping from word to node index
-        word_to_node = {word: i for i, word in enumerate(unique_words)}
+        # Normalize edge weights
+        if edges:
+            edge_weights = torch.tensor(edge_weights, dtype=torch.float)
+            edge_weights = F.softmax(edge_weights, dim=0)  # Normalize weights
+        else:
+            # If no edges were added, add self-loops with attention
+            edges = []
+            edge_weights = []
+            for i in range(num_nodes):
+                # Add self-loop
+                edges.append([i, i])
+                edge_weights.append(1.0)
+                
+                # Add weak connections to all other nodes
+                for j in range(num_nodes):
+                    if i != j:
+                        edges.append([i, j])
+                        # Use node feature similarity for edge weight
+                        sim = F.cosine_similarity(
+                            node_features[i].unsqueeze(0),
+                            node_features[j].unsqueeze(0)
+                        ).item()
+                        edge_weights.append(sim * 0.1)  # Weak connection
+            
+            edge_weights = torch.tensor(edge_weights, dtype=torch.float)
+            edge_weights = F.softmax(edge_weights, dim=0)
         
-        # Add edges based on local co-occurrence
-        for word1 in local_cooccurrence:
-            for word2, count in local_cooccurrence[word1].items():
-                if count > 0 and word1 in word_to_node and word2 in word_to_node:
-                    i = word_to_node[word1]
-                    j = word_to_node[word2]
-                    
-                    # Add edge in both directions for undirected graph
-                    edges.append([i, j])
-                    edges.append([j, i])
-                    
-                    # Use log(1 + count) as edge weight to reduce the impact of high-frequency pairs
-                    weight = math.log(1 + count)
-                    edge_weights.append(weight)
-                    edge_weights.append(weight)
-        
-        if not edges:
-            # If no edges were added, add self-loops to all nodes
-            edges = [[i, i] for i in range(num_nodes)]
-            edge_weights = [1.0] * num_nodes
-        
-        # Convert to tensors
+        # Convert edges to tensor
         edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-        edge_weights = torch.tensor(edge_weights, dtype=torch.float)
+        
+        # Apply graph sparsification if needed
+        if edge_index.size(1) > self.max_nodes * 10:  # Limit edges per node
+            # Keep top-k edges per node based on weights
+            k = 10  # Max edges per node
+            sparse_edges = []
+            sparse_weights = []
+            
+            for i in range(num_nodes):
+                # Get all edges for node i
+                mask = edge_index[0] == i
+                node_edges = edge_index[:, mask]
+                node_weights = edge_weights[mask]
+                
+                if len(node_weights) > k:
+                    # Keep top-k edges
+                    _, top_indices = torch.topk(node_weights, k)
+                    sparse_edges.append(node_edges[:, top_indices])
+                    sparse_weights.append(node_weights[top_indices])
+                else:
+                    sparse_edges.append(node_edges)
+                    sparse_weights.append(node_weights)
+            
+            # Combine sparse edges and weights
+            edge_index = torch.cat(sparse_edges, dim=1)
+            edge_weights = torch.cat(sparse_weights)
+            
+            # Renormalize weights
+            edge_weights = F.softmax(edge_weights, dim=0)
+        
+        # Add virtual nodes for long-range dependencies
+        if num_nodes > 1:
+            # Create a virtual node connected to all other nodes
+            virtual_node_idx = num_nodes
+            virtual_edges = torch.cat([
+                torch.arange(num_nodes).repeat(2, 1),
+                torch.full((2, num_nodes), virtual_node_idx)
+            ], dim=1)
+            
+            # Add virtual node features (learned embedding)
+            virtual_features = torch.zeros(1, len(self.vocab))
+            node_features = torch.cat([node_features, virtual_features], dim=0)
+            
+            # Add virtual edges with adaptive weights
+            edge_index = torch.cat([edge_index, virtual_edges], dim=1)
+            virtual_weights = torch.ones(virtual_edges.size(1)) * 0.5
+            edge_weights = torch.cat([edge_weights, virtual_weights])
+            
+            # Final normalization
+            edge_weights = F.softmax(edge_weights, dim=0)
         
         return node_features, edge_index, edge_weights
     

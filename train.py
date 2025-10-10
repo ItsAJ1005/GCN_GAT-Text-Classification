@@ -204,10 +204,11 @@ def plot_training_curves(history, model_name, output_dir='results'):
     plt.close()
 
 def train_model(model, train_loader, val_loader, test_loader, 
-               num_epochs=50, lr=0.0005, device='cuda', 
-               model_save_path='best_model.pt', patience=7):
+               num_epochs=50, lr=0.0002, device='cuda', 
+               model_save_path='best_model.pt', patience=5,
+               max_grad_norm=1.0):
     """
-    Train and evaluate the model with early stopping.
+    Enhanced training with learning rate scheduling, gradient clipping, and improved early stopping.
     
     Args:
         model: The GNN model to train.
@@ -215,21 +216,37 @@ def train_model(model, train_loader, val_loader, test_loader,
         val_loader: DataLoader for validation data.
         test_loader: DataLoader for test data.
         num_epochs: Maximum number of training epochs.
-        lr: Learning rate.
+        lr: Initial learning rate.
         device: Device to train on ('cuda' or 'cpu').
         model_save_path: Path to save the best model.
-        patience: Number of epochs to wait before early stopping (default: 5).
+        patience: Number of epochs to wait before early stopping.
+        max_grad_norm: Maximum gradient norm for clipping.
     
     Returns:
-        tuple: (best_model, history, test_metrics)
+        dict: Training history and metrics
     """
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
+    
+    # Learning rate scheduler with warmup
+    warmup_epochs = 5
+    scheduler = optim.lr_scheduler.OneCycleLR(
+        optimizer,
+        max_lr=lr,
+        epochs=num_epochs,
+        steps_per_epoch=len(train_loader),
+        pct_start=warmup_epochs/num_epochs,  # Warmup phase
+        anneal_strategy='cos',  # Cosine annealing
+        div_factor=25.0,  # Initial lr = max_lr/25
+        final_div_factor=1000.0  # Final lr = initial_lr/1000
+    )
     
     best_loss = float('inf')
     best_val_f1 = 0.0
+    best_val_acc = 0.0
     patience_counter = 0
     best_model = None
+    best_epoch = 0
     
     history = {
         'train_loss': [],
@@ -237,47 +254,136 @@ def train_model(model, train_loader, val_loader, test_loader,
         'train_f1': [],
         'val_loss': [],
         'val_acc': [],
-        'val_f1': []
+        'val_f1': [],
+        'learning_rates': []
     }
+    
+    # Initialize EMA for model averaging
+    ema_alpha = 0.999
+    ema_model = type(model)(*model.__init_args__).to(device)
+    ema_model.load_state_dict(model.state_dict())
     
     for epoch in range(num_epochs):
         model.train()
-        train_loss, train_acc, train_f1 = train_epoch(
-            model, train_loader, criterion, optimizer, device
-        )
+        total_train_loss = 0
+        total_samples = 0
+        all_preds = []
+        all_labels = []
         
-        model.eval()
+        # Training loop with gradient clipping and learning rate scheduling
+        progress_bar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{num_epochs}')
+        for batch in progress_bar:
+            if batch is None or len(batch) != 3:
+                continue
+                
+            data, labels, _ = batch
+            if data is None or labels is None:
+                continue
+                
+            data = data.to(device)
+            labels = labels.to(device)
+            
+            optimizer.zero_grad()
+            outputs = model(data)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            
+            optimizer.step()
+            scheduler.step()  # Update learning rate
+            
+            # Update EMA model
+            with torch.no_grad():
+                for ema_param, param in zip(ema_model.parameters(), model.parameters()):
+                    ema_param.data.mul_(ema_alpha).add_(param.data, alpha=1 - ema_alpha)
+            
+            # Track metrics
+            batch_size = labels.size(0)
+            total_train_loss += loss.item() * batch_size
+            total_samples += batch_size
+            _, preds = torch.max(outputs, 1)
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+            
+            # Update progress bar
+            current_lr = scheduler.get_last_lr()[0]
+            progress_bar.set_postfix({
+                'loss': f'{loss.item():.4f}',
+                'lr': f'{current_lr:.6f}'
+            })
+        
+        # Calculate epoch metrics
+        train_loss = total_train_loss / total_samples
+        train_acc = accuracy_score(all_labels, all_preds)
+        train_f1 = f1_score(all_labels, all_preds, average='weighted')
+        
+        # Validation phase using EMA model
+        ema_model.eval()
         val_loss, val_acc, val_f1, _, _, _ = evaluate(
-            model, val_loader, criterion, device
+            ema_model, val_loader, criterion, device
         )
         
+        # Track history
         history['train_loss'].append(train_loss)
         history['train_acc'].append(train_acc)
         history['train_f1'].append(train_f1)
         history['val_loss'].append(val_loss)
         history['val_acc'].append(val_acc)
         history['val_f1'].append(val_f1)
+        history['learning_rates'].append(current_lr)
         
-        print(f"Epoch {epoch+1}/{num_epochs}:")
+        # Print epoch results
+        print(f"\nEpoch {epoch+1}/{num_epochs} Results:")
         print(f"  Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}")
         print(f"  Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}, F1: {val_f1:.4f}")
+        print(f"  Learning Rate: {current_lr:.6f}")
         
-        # Save model if validation loss improves
+        # Model saving with comprehensive criteria
+        improved = False
+        save_message = []
+        
         if val_loss < best_loss:
             best_loss = val_loss
+            save_message.append(f"New best loss: {val_loss:.4f}")
+            improved = True
+            
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            save_message.append(f"New best accuracy: {val_acc:.4f}")
+            improved = True
+            
+        if val_f1 > best_val_f1:
             best_val_f1 = val_f1
-            best_model = model.state_dict().copy()
-            torch.save(model.state_dict(), model_save_path)
-            print(f"Model saved to {model_save_path} (Val Loss: {val_loss:.4f})")
+            save_message.append(f"New best F1: {val_f1:.4f}")
+            improved = True
+        
+        if improved:
+            best_model = ema_model.state_dict().copy()  # Save EMA model
+            best_epoch = epoch
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': best_model,
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'val_loss': val_loss,
+                'val_acc': val_acc,
+                'val_f1': val_f1
+            }, model_save_path)
+            print(f"Model saved to {model_save_path} (" + ", ".join(save_message) + ")")
             patience_counter = 0
         else:
             patience_counter += 1
             print(f"No improvement. Patience: {patience_counter}/{patience}")
         
-        # Early stopping check
+        # Early stopping with more informative message
         if patience_counter >= patience:
             print(f"\nEarly stopping triggered after {epoch+1} epochs")
-            print(f"Best validation loss: {best_loss:.4f}")
+            print(f"Best model from epoch {best_epoch+1}:")
+            print(f"  Loss: {best_loss:.4f}")
+            print(f"  Accuracy: {best_val_acc:.4f}")
+            print(f"  F1 Score: {best_val_f1:.4f}")
             break
     
     model.load_state_dict(torch.load(model_save_path))
