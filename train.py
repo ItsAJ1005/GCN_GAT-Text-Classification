@@ -225,22 +225,22 @@ def train_model(model, train_loader, val_loader, test_loader,
     Returns:
         dict: Training history and metrics
     """
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
+    # Loss function with label smoothing for better generalization
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
     
-    # Learning rate scheduler with warmup
-    warmup_epochs = 5
-    scheduler = optim.lr_scheduler.OneCycleLR(
-        optimizer,
-        max_lr=lr,
-        epochs=num_epochs,
-        steps_per_epoch=len(train_loader),
-        pct_start=warmup_epochs/num_epochs,  # Warmup phase
-        anneal_strategy='cos',  # Cosine annealing
-        div_factor=25.0,  # Initial lr = max_lr/25
-        final_div_factor=1000.0  # Final lr = initial_lr/1000
+    # AdamW optimizer with weight decay for better regularization
+    optimizer = optim.AdamW(model.parameters(), 
+                          lr=0.001,  # Increased learning rate
+                          weight_decay=1e-4)  # L2 regularization
+    
+    # Cosine annealing learning rate scheduler with warmup
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, 
+        T_max=num_epochs, 
+        eta_min=1e-5  # Minimum learning rate
     )
     
+    # Initialize training variables
     best_loss = float('inf')
     best_val_f1 = 0.0
     best_val_acc = 0.0
@@ -254,14 +254,8 @@ def train_model(model, train_loader, val_loader, test_loader,
         'train_f1': [],
         'val_loss': [],
         'val_acc': [],
-        'val_f1': [],
-        'learning_rates': []
+        'val_f1': []
     }
-    
-    # Initialize EMA for model averaging
-    ema_alpha = 0.999
-    ema_model = type(model)(*model.__init_args__).to(device)
-    ema_model.load_state_dict(model.state_dict())
     
     for epoch in range(num_epochs):
         model.train()
@@ -291,13 +285,10 @@ def train_model(model, train_loader, val_loader, test_loader,
             # Gradient clipping
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             
-            optimizer.step()
-            scheduler.step()  # Update learning rate
+            # Clip gradients to prevent explosion
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             
-            # Update EMA model
-            with torch.no_grad():
-                for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-                    ema_param.data.mul_(ema_alpha).add_(param.data, alpha=1 - ema_alpha)
+            optimizer.step()
             
             # Track metrics
             batch_size = labels.size(0)
@@ -308,21 +299,26 @@ def train_model(model, train_loader, val_loader, test_loader,
             all_labels.extend(labels.cpu().numpy())
             
             # Update progress bar
-            current_lr = scheduler.get_last_lr()[0]
             progress_bar.set_postfix({
-                'loss': f'{loss.item():.4f}',
-                'lr': f'{current_lr:.6f}'
+                'loss': f'{loss.item():.4f}'
             })
+        
+        # Update learning rate
+        scheduler.step()
         
         # Calculate epoch metrics
         train_loss = total_train_loss / total_samples
         train_acc = accuracy_score(all_labels, all_preds)
         train_f1 = f1_score(all_labels, all_preds, average='weighted')
         
-        # Validation phase using EMA model
-        ema_model.eval()
+        # Log current learning rate
+        current_lr = optimizer.param_groups[0]['lr']
+        print(f'Epoch {epoch+1}: LR = {current_lr:.6f}')
+        
+        # Validation phase
+        model.eval()
         val_loss, val_acc, val_f1, _, _, _ = evaluate(
-            ema_model, val_loader, criterion, device
+            model, val_loader, criterion, device
         )
         
         # Track history
@@ -332,13 +328,11 @@ def train_model(model, train_loader, val_loader, test_loader,
         history['val_loss'].append(val_loss)
         history['val_acc'].append(val_acc)
         history['val_f1'].append(val_f1)
-        history['learning_rates'].append(current_lr)
         
         # Print epoch results
         print(f"\nEpoch {epoch+1}/{num_epochs} Results:")
         print(f"  Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f}, F1: {train_f1:.4f}")
         print(f"  Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}, F1: {val_f1:.4f}")
-        print(f"  Learning Rate: {current_lr:.6f}")
         
         # Model saving with comprehensive criteria
         improved = False
@@ -360,13 +354,12 @@ def train_model(model, train_loader, val_loader, test_loader,
             improved = True
         
         if improved:
-            best_model = ema_model.state_dict().copy()  # Save EMA model
+            best_model = model.state_dict().copy()
             best_epoch = epoch
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': best_model,
                 'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict(),
                 'val_loss': val_loss,
                 'val_acc': val_acc,
                 'val_f1': val_f1
@@ -386,7 +379,12 @@ def train_model(model, train_loader, val_loader, test_loader,
             print(f"  F1 Score: {best_val_f1:.4f}")
             break
     
-    model.load_state_dict(torch.load(model_save_path))
+    # Load best model
+    checkpoint = torch.load(model_save_path)
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        model.load_state_dict(checkpoint)
     
     test_loss, test_acc, test_f1, test_texts, test_preds, test_labels = evaluate(
         model, test_loader, criterion, device

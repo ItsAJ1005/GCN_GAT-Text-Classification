@@ -210,12 +210,14 @@ def load_classifier(device='cpu', model_type='gat', dataset='mr'):
     # Set class names based on dataset
     if dataset.lower() == 'mr':
         class_names = ['negative', 'positive']  # MR dataset has 2 classes
-    else:  # Default to 20 Newsgroups classes
+    else:  # 20 Newsgroups - all 20 classes
         class_names = [
-            'comp.graphics',
-            'rec.sport.baseball',
-            'sci.space',
-            'talk.politics.mideast'
+            'alt.atheism', 'comp.graphics', 'comp.os.ms-windows.misc',
+            'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware', 'comp.windows.x',
+            'misc.forsale', 'rec.autos', 'rec.motorcycles', 'rec.sport.baseball',
+            'rec.sport.hockey', 'sci.crypt', 'sci.electronics', 'sci.med',
+            'sci.space', 'soc.religion.christian', 'talk.politics.guns',
+            'talk.politics.mideast', 'talk.politics.misc', 'talk.religion.misc'
         ]
     
     print(f"Loading {model_type.upper()} model for {dataset} dataset...")

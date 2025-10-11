@@ -115,7 +115,8 @@ def prepare_data(args):
     graph_builder = GraphBuilder(
         min_word_freq=5,  # Minimum word frequency
         window_size=args.window_size,  # Context window size
-        max_vocab_size=10000  # Maximum vocabulary size
+        max_vocab_size=10000,  # Maximum vocabulary size
+        max_nodes=args.max_nodes  # Maximum nodes per graph
     )
     
     # Simple text cleaning before building vocabulary
@@ -307,7 +308,12 @@ def main():
     
     # Evaluate the model on test set
     print("\nEvaluating on test set...")
-    model.load_state_dict(torch.load(args.model_save_path))
+    # Load best model checkpoint
+    checkpoint = torch.load(args.model_save_path)
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        model.load_state_dict(checkpoint)
     
     # Create test dataset and loader with batch_size=1 for individual predictions
     test_dataset = GraphDataset(

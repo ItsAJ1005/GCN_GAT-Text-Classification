@@ -29,7 +29,7 @@ class GraphBuilder:
     Implements PMI-based edge weighting and provides visualization capabilities.
     """
     
-    def __init__(self, min_word_freq=5, window_size=3, max_vocab_size=10000):
+    def __init__(self, min_word_freq=5, window_size=3, max_vocab_size=10000, max_nodes=150):
         """
         Initialize the graph builder.
         
@@ -37,10 +37,12 @@ class GraphBuilder:
             min_word_freq (int): Minimum word frequency to include in vocabulary
             window_size (int): Context window size for co-occurrence counting
             max_vocab_size (int): Maximum size of the vocabulary
+            max_nodes (int): Maximum number of nodes per graph
         """
         self.min_word_freq = min_word_freq
         self.window_size = window_size
         self.max_vocab_size = max_vocab_size
+        self.max_nodes = max_nodes
         
         # Text processing
         self.stop_words = set(stopwords.words('english'))
@@ -143,6 +145,9 @@ class GraphBuilder:
         preprocessed_docs = [' '.join(self.preprocess_text(doc)) for doc in documents]
         self.vectorizer.fit(preprocessed_docs)
         
+        # Build co-occurrence matrix for PMI calculation
+        self._get_cooccurrence_matrix(documents)
+        
         return self.word_to_idx
         
     def calculate_pmi(self, word1, word2):
@@ -164,6 +169,10 @@ class GraphBuilder:
         count_i = self.word_freq[word1]
         count_j = self.word_freq[word2]
         count_ij = self.cooccurrence[word1][word2]
+        
+        # Safety check for division by zero
+        if self.total_windows == 0:
+            return 0.0
         
         # Calculate probabilities
         p_i = count_i / self.total_windows

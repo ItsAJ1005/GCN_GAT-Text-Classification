@@ -164,13 +164,13 @@ python main.py --model gat --dataset MR
 
 ### GCN Architecture
 ```
-Input Layer (TF-IDF) → GCN Layer 1 (ReLU) → Dropout → 
+Input Layer (TF-IDF) → GCN Layer 1 (GeLU) → Dropout → 
 GCN Layer 2 → Global Mean Pooling → Output Layer (Softmax)
 ```
 
 ### GAT Architecture
 ```
-Input Layer (TF-IDF) → GAT Layer 1 (4 heads, ELU) → Dropout → 
+Input Layer (TF-IDF) → GAT Layer 1 (4 heads, G  ELU) → Dropout → 
 GAT Layer 2 (1 head) → Global Mean Pooling → Output Layer (Softmax)
 ```
 

@@ -44,7 +44,7 @@ class DocumentGAT(nn.Module):
             num_heads (int): Number of attention heads in first layer (default: 8)
             dropout (float): Dropout rate (default: 0.3)
         """
-        super(DocumentGAT, self)._init_()
+        super(DocumentGAT, self).__init__()
         
         # Input projection
         self.input_proj = nn.Linear(vocab_size, hidden_dim)
