@@ -37,36 +37,36 @@ ENV/
 .ipynb_checkpoints
 
 # Data files
-*.pkl
-*.h5
-*.hdf5
-*.pt
-*.pth
-*.bin
-*.npy
-*.npz
+# *.pkl
+# *.h5
+# *.hdf5
+# *.pt
+# *.pth
+# *.bin
+# *.npy
+# *.npz
 
 # Logs and databases
-*.log
-*.sql
-*.sqlite
+# *.log
+# *.sql
+# *.sqlite
 
 # Local development
 .env
 .env.local
 
 # Training outputs
-results/
-saved_models/
-*.pth.tar
+# results/
+# saved_models/
+# *.pth.tar
 
 # Dataset files
-data/raw/
-data/processed/
-*.csv
-*.json
-*.jsonl
-*.txt
+# data/raw/
+# data/processed/
+# *.csv
+# *.json
+# *.jsonl
+# *.txt
 
 # Mac OS specific
 .DS_Store
@@ -80,8 +80,8 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # Project specific
-evaluation_results/
-*.png
-*.jpg
-*.jpeg
-*.pdf
+# evaluation_results/
+# *.png
+# *.jpg
+# *.jpeg
+# *.pdf

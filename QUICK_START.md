@@ -47,7 +47,7 @@ python predict.py --dataset mr --model-type gat --text "This movie was amazing!"
 # Using GCN
 python predict.py --dataset 20news --model-type gcn --text "The new graphics card has great performance"
 
-# Using GAT
+# Using GAT 
 python predict.py --dataset 20news --model-type gat --text "The new graphics card has great performance"
 ```
 

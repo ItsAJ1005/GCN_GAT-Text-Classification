@@ -160,7 +160,7 @@ python main.py --model gat --dataset MR
 1. **Node Creation**: Each unique word becomes a node
 2. **Edge Creation**: Words are connected if they co-occur within a sliding window
 3. **Node Features**: TF-IDF weighted word vectors
-4. **Edge Weights**: Pointwise Mutual Information (PMI) scores
+4. **Edge Wsofteights**: Pointwise Mutual Information (PMI) scores
 
 ### GCN Architecture
 ```

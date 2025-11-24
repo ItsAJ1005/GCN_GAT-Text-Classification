@@ -1,0 +1,1182 @@
+{
+    "loss": 0.8966507373837111,
+    "accuracy": 0.5842105263157895,
+    "precision": 0.5875362801101806,
+    "recall": 0.5842105263157895,
+    "f1": 0.5785647385732612,
+    "report": {
+        "0": {
+            "precision": 0.5726495726495726,
+            "recall": 0.6979166666666666,
+            "f1-score": 0.6291079812206573,
+            "support": 96.0
+        },
+        "1": {
+            "precision": 0.6027397260273972,
+            "recall": 0.46808510638297873,
+            "f1-score": 0.5269461077844312,
+            "support": 94.0
+        },
+        "accuracy": 0.5842105263157895,
+        "macro avg": {
+            "precision": 0.5876946493384849,
+            "recall": 0.5830008865248226,
+            "f1-score": 0.5780270445025442,
+            "support": 190
+        },
+        "weighted avg": {
+            "precision": 0.5875362801101806,
+            "recall": 0.5842105263157895,
+            "f1-score": 0.5785647385732612,
+            "support": 190.0
+        },
+        "micro avg": {
+            "precision": 0.5842105263157895,
+            "recall": 0.5842105263157895,
+            "f1-score": 0.5842105263157895,
+            "support": 190
+        }
+    },
+    "predictions": [
+        {
+            "text": "this is more fascinating being real than anything seen on jerry springer",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "little more than a well acted television melodrama shot for the big screen",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "stevenson 's performance is at once clueless and fiercely committed , a volatile combination",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "chouraqui brings documentary like credibility to the horrors of the killing field and the barbarism of 'ethnic cleansing '",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "may be far from the best of the series , but it 's assured , wonderfully respectful of its past and thrilling enough to make it abundantly clear that this movie phenomenon has once again reinvented itself for a new generation",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "the cast keeps this pretty watchable , and casting mick jagger as director of the escort service was inspired",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "i'm sure the filmmakers found this a remarkable and novel concept , but anybody who has ever seen an independent film can report that it is instead a cheap clich",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the film might have been more satisfying if it had , in fact , been fleshed out a little more instead of going for easy smiles",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the problem with this film is that it lacks focus i sympathize with the plight of these families , but the movie does n't do a very good job conveying the issue at hand",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "suffers from a flat script and a low budget",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "there is a strong directorial stamp on every frame of this stylish film that is able to visualize schizophrenia but is still confident enough to step back and look at the sick character with a sane eye",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "martin and barbara are complex characters sometimes tender , sometimes angry and the delicate performances by sven wollter and viveka seldahl make their hopes and frustrations vivid",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "ludicrous , but director carl franklin adds enough flourishes and freak outs to make it entertaining",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "full of profound , real life moments that anyone can relate to , it deserves a wide audience",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "will probably be one of those movies barely registering a blip on the radar screen of 2002",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "it 's a documentary that says that the alternate sexuality meant to set you free may require so much relationship maintenance that celibacy can start looking good",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "it 's a long way from orwell 's dark , intelligent warning cry 1984 to the empty stud knockabout of equilibrium , and what once was conviction is now affectation",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "predictably melodramatic",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "while the story 's undeniably hard to follow , iwai 's gorgeous visuals seduce",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "a masterpiece four years in the making",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "however sincere it may be , the rising place never quite justifies its own existence",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "amari has dressed up this little parable in a fairly irresistible package full of privileged moments and memorable performances",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "quite funny for the type of movie it is",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "ryosuke has created a wry , winning , if languidly paced , meditation on the meaning and value of family",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "this time mr burns is trying something in the martin scorsese street realist mode , but his self regarding sentimentality trips him up again",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "branagh , in his most forceful non shakespeare screen performance , grounds even the softest moments in the angry revolt of his wit",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "shainberg weaves a carefully balanced scenario that is controlled by neither character , is weirdly sympathetic to both and manages to be tender and darkly comic",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "a genuinely funny ensemble comedy that also asks its audience in a heartwarming , nonjudgmental kind of way to consider what we value in our daily lives",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "the underworld urban angst is derivative of martin scorsese 's taxi driver and goodfellas , but this film speaks for itself",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "despite the pyrotechnics , narc is strictly by the book",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "it 's clear the filmmakers were n't sure where they wanted their story to go , and even more clear that they lack the skills to get us to this undetermined destination",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "there 's only one way to kill michael myers for good stop buying tickets to these movies",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "blue crush has all the trappings of an energetic , extreme sports adventure , but ends up more of a creaky pretty woman retread , with the emphasis on self empowering schmaltz and big wave surfing that gives pic its title an afterthought",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "merely as a technical , logistical feat , russian ark marks a cinematic milestone",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "familiar and predictable , and 4 5ths of it might as well have come from a xerox machine rather than \\( writer director \\) franc reyes' word processor",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the tuxedo was n't just bad it was , as my friend david cross would call it , 'hungry man portions of bad'",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "a movie that both thrills the eye and , in its over the top way , touches the heart",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "watching spirited away is like watching an eastern imagination explode",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "if there 's no art here , it 's still a good yarn which is nothing to sneeze at these days",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "cattaneo should have followed the runaway success of his first film , the full monty , with something different",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "i found the movie as divided against itself as the dysfunctional family it portrays",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "the script is smart , not cloying",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "much of the movie 's charm lies in the utter cuteness of stuart and margolo their computer animated faces are very expressive",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "everything was as superficial as the forced new jersey lowbrow accent uma had",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "a recipe for cinematic disaster part quentin tarantino , part guy ritchie , and part 1960s spy spoof , it 's all bad",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the film may appear naked in its narrative form but it goes deeper than that , to fundamental choices that include the complexity of the catholic doctrine",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "it 's a lot to ask people to sit still for two hours and change watching such a character , especially when rendered in as flat and impassive a manner as phoenix 's",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "mostly , shafer and co writer gregory hinton lack a strong minded viewpoint , or a sense of humor",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the people in abc africa are treated as docile , mostly wordless ethnographic extras",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "it has the charm of the original american road movies , feasting on the gorgeous , ramshackle landscape of the filmmaker 's motherland",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "vile and tacky are the two best adjectives to describe ghost ship",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "summer 's far too fleeting to squander on offal like this",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "boldly engineering a collision between tawdry b movie flamboyance and grandiose spiritual anomie , rose 's film , true to its source material , provides a tenacious demonstration of death as the great equalizer",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "fear permeates the whole of stortelling , todd solondz' oftentimes funny , yet ultimately cowardly autocritique",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "h ad i suffered and bled on the hard ground of ia drang , i 'd want something a bit more complex than we were soldiers to be remembered by",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "no amount of blood and disintegrating vampire cadavers can obscure this movie 's lack of ideas",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "brown sugar signals director rick famuyiwa 's emergence as an articulate , grown up voice in african american cinema",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "is n't it a bit early in his career for director barry sonnenfeld to do a homage to himself \\? and it 's a lousy one at that",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "although trying to balance self referential humor and a normal ol' slasher plot seemed like a decent endeavor , the result does n't fully satisfy either the die hard jason fans or those who can take a good joke",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the directing and story are disjointed , flaws that have to be laid squarely on taylor 's doorstep but the actors make this worth a peek",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "a stupid , derivative horror film that substitutes extreme gore for suspense",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "barely goes beyond comic book status",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "wow , so who knew charles dickens could be so light hearted \\?",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a film centering on a traditional indian wedding in contemporary new delhi may not sound like specialized fare , but mira nair 's film is an absolute delight for all audiences",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "if you do n't flee , you might be seduced if you do n't laugh , flee",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a summary of the plot does n't quite do justice to the awfulness of the movie , for that comes through all too painfully in the execution",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "never comes together as a coherent whole",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "when the painted backdrops in a movie are more alive than its characters , you know you 're in trouble",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "one of those movies that catches you up in something bigger than yourself , namely , an archetypal desire to enjoy good trash every now and then",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "a film of epic scale with an intimate feeling , a saga of the ups and downs of friendships",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "comes off like a bad imitation of the bard",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "a yawn provoking little farm melodrama",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "bad in such a bizarre way that it 's almost worth seeing , if only to witness the crazy confluence of purpose and taste",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "a series of tales told with the intricate preciseness of the best short story writing",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "the script manages the rare trick of seeming at once both refreshingly different and reassuringly familiar",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "hashiguchi vividly captures the way young japanese live now , chafing against their culture 's manic mix of millennial brusqueness and undying , traditional politesse",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "i liked this film a lot",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "hilarious , acidic brit comedy",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "you get the impression that writer and director burr steers knows the territory but his sense of humor has yet to lose the smug self satisfaction usually associated with the better private schools",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "the sort of picture in which , whenever one of the characters has some serious soul searching to do , they go to a picture perfect beach during sunset",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "exhilarating , funny and fun",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "with its parade of almost perpetually wasted characters margarita feels like a hazy high that takes too long to shake",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "for every articulate player , such as skateboarder tony hawk or bmx rider mat hoffman , are about a half dozen young turks angling to see how many times they can work the words radical or suck into a sentence",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the powder blues and sun splashed whites of tunis make an alluring backdrop for this sensuous and spirited tale of a prim widow who finds an unlikely release in belly dancing clubs",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "both lead performances are oscar size quaid is utterly fearless as the tortured husband living a painful lie , and moore wonderfully underplays the long suffering heroine with an unflappable '50s dignity somewhere between jane wyman and june cleaver",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "wickedly funny , visually engrossing , never boring , this movie challenges us to think about the ways we consume pop culture",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "an unbelievably fun film just a leading man away from perfection",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "a disaster of a drama , saved only by its winged assailants",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "if you liked the 1982 film then , you 'll still like it now",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "davis is so enamored of her own creation that she ca n't see how insufferable the character is",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "rosenthal \\( halloween ii \\) seems to have forgotten everything he ever knew about generating suspense",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "most of the movie is so deadly dull that watching the proverbial paint dry would be a welcome improvement",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "an effectively creepy , fear inducing \\( not fear reducing \\) film from japanese director hideo nakata , who takes the superstitious curse on chain letters and actually applies it",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "you can almost see mendes and company getting together before a single frame had been shot and collectively vowing , 'this is going to be something really good ' and it is",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a high spirited buddy movie about the reunion of berlin anarchists who face arrest 15 years after their crime",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "while american adobo has its heart \\( and its palate \\) in the right place , its brain is a little scattered ditsy , even",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "bisset delivers a game performance , but she is unable to save the movie",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "altogether , this is successful as a film , while at the same time being a most touching reconsideration of the familiar masterpiece",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "writer director m night shyamalan 's ability to pull together easily accessible stories that resonate with profundity is undeniable",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "flat , misguided comedy",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "it smacks of purely commercial motivation , with no great love for the original",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "what frei gives us is a man who uses the damage of war far more often than the warfare itself to create the kind of art shots that fill gallery shows",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "a captivatingly quirky hybrid of character portrait , romantic comedy and beat the clock thriller",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a laughable or rather , unlaughable excuse for a film",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "equal parts bodice ripper and plodding costume drama",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "a terrific date movie , whatever your orientation",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a breezy romantic comedy that has the punch of a good sitcom , while offering exceptionally well detailed characters",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "it 's sobering , particularly if anyone still thinks this conflict can be resolved easily , or soon",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "occasionally melodramatic , it 's also extremely effective",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "'cq may one day be fondly remembered as roman coppola 's brief pretentious period before going on to other films that actually tell a story worth caring about",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "a plethora of engaging diatribes on the meaning of 'home , ' delivered in grand passion by the members of the various households",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a generic international version of a typical american horror film",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "a worthy addition to the cinematic canon , which , at last count , numbered 52 different versions",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "muccino seems to be exploring the idea of why human beings long for what they do n't have , and how this gets us in trouble but even while his characters are acting horribly , he is always sympathetic",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a rock solid gangster movie with a fair amount of suspense , intriguing characters and bizarre bank robberies , plus a heavy dose of father and son dynamics",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "meanders between its powerful moments",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "it 's an old story , but a lively script , sharp acting and partially animated interludes make just a kiss seem minty fresh",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "its one sidedness flirts with propaganda",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "a formula family tearjerker told with a heavy irish brogue accentuating , rather than muting , the plot 's saccharine thrust",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "much of what we see is horrible but it 's also undeniably exceedingly clever",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "by the standards of knucklehead swill , the hot chick is pretty damned funny",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "you can thank me for this i saw juwanna mann so you do n't have to",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "ultimately , sarah 's dedication to finding her husband seems more psychotic than romantic , and nothing in the movie makes a convincing case that one woman 's broken heart outweighs all the loss we witness",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "a glossy knock off of a b movie revenge flick",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "it 's hard to believe these jokers are supposed to have pulled off four similar kidnappings before",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "this one aims for the toilet and scores a direct hit",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "bond inspired \\? certainly likely to have decades of life as a classic movie franchise \\? let 's hope not",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "they 're going through the motions , but the zip is gone",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "jaglom put s the audience in the privileged position of eavesdropping on his characters",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "turns so unforgivably trite in its last 10 minutes that anyone without a fortified sweet tooth will likely go into sugar shock",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the movie is ingenious fun see it",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "broder 's screenplay is shallow , offensive and redundant , with pitifully few real laughs",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "is an arthritic attempt at directing by callie khouri i had to look away this was god awful",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "life is a crock or something like it",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the drama was so uninspiring that even a story immersed in love , lust , and sin could n't keep my attention",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "like the chelsea 's denizens burdette 's collage form scenario tends to over romanticize the spiritual desolation of the struggling artiste",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "it 's rare that a movie can be as intelligent as this one is in every regard except its storyline everything that 's good is ultimately scuttled by a plot that 's just too boring and obvious",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "by the miserable standards to which the slasher genre has sunk , actually pretty good of course , by more objective measurements it 's still quite bad",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the whole affair is as predictable as can be",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "it 's more enjoyable than i expected , though , and that 's because the laughs come from fairly basic comedic constructs cinematic pratfalls given a working over the cast is spot on and the mood is laid back",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "arteta paints a picture of lives lived in a state of quiet desperation",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "a little more intensity and a little less charm would have saved this film a world of hurt",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "all of the filmmakers' calculations ca n't rescue brown sugar from the curse of blandness",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "each of these stories has the potential for touched by an angel simplicity and sappiness , but thirteen conversations about one thing , for all its generosity and optimism , never resorts to easy feel good sentiments",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "the pianist is a supremely hopeful cautionary tale of war 's madness remembered that we , today , can prevent its tragic waste of life here is a divine monument to a single man 's struggle to regain his life , his dignity and his music",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "abandons all pretense of creating historical context and waltzes off into a hectic soap about the ups and downs of the heavy breathing between the two artists",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "despite the holes in the story and the somewhat predictable plot , moments of the movie caused me to jump in my chair",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the principals in this cast are all fine , but bishop and stevenson are standouts",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "this is a harrowing movie about how parents know where all the buttons are , and how to push them",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "showtime is one of the hapless victims of the arrogant if we put together a wry white man and a chatty black man and give them guns , the movie will be funny syndrome",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "reeks of rot and hack work from start to finish",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "eddie murphy and owen wilson have a cute partnership in i spy , but the movie around them is so often nearly nothing that their charm does n't do a load of good",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "nothing denis has made before , like beau travil and nenette et boni , could prepare us for this gory , perverted , sex soaked riff on the cannibal genre",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a perverse little truffle , dainty psychological terror on the outside with a creamy filling of familial jealousy and unrepentant domestic psychopathy",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "those with a modicum of patience will find in these characters' foibles a timeless and unique perspective",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "drumline is the mere suggestion , albeit a visually compelling one , of a fully realized story",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "the auteur 's ear for the way fears and slights are telegraphed in the most blithe exchanges gives the film its lingering tug",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "no amount of arty theorizing the special effects are 'german expressionist , ' according to the press notes can render it anything but laughable",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "sen 's soap opera ish approach undermines his good intentions",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "it 's made with deftly unsettling genre flair",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "this time out , sade is an unsettlingly familiar figure in turns loyal and deceitful , responsible and reckless , idealistically selfless and coldly self interested",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "you can tell almost immediately that welcome to collinwood is n't going to jell",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "it 's a rare window on an artistic collaboration",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "highly recommended as an engrossing story about a horrifying historical event and the elements which contributed to it",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "it 's excessively quirky and a little underconfident in its delivery , but otherwise this is the best 'old neighborhood' project since christopher walken kinda romanced cyndi lauper in the opportunists",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "though there are entertaining and audacious moments , the movie 's wildly careening tone and an extremely flat lead performance do little to salvage this filmmaker 's flailing reputation",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the romance between the leads is n't as compelling or as believable as it should be",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "the movie is so contrived , nonsensical and formulaic that , come to think of it , the day old shelf would be a more appropriate location to store it",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "a loud , ugly , irritating movie without any of its satirical salvos hitting a discernible target",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "as giddy and whimsical and relevant today as it was 270 years ago",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "most new movies have a bright sheen some , like ballistic , arrive stillborn looking like the beaten , well worn video box cover of seven years into the future",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "there are just enough twists in the tale to make it far more satisfying than almost any horror film in recent memory",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "one of the year 's most weirdly engaging and unpredictable character pieces",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "seagal is painfully foolish in trying to hold onto what 's left of his passe' chopsocky glory",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "jagger , stoppard and director michael apted deliver a riveting and surprisingly romantic ride",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "all right , so it 's not a brilliant piece of filmmaking , but it is a funny \\( sometimes hilarious \\) comedy with a deft sense of humor about itself , a playful spirit and a game cast",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "sandra bullock , despite downplaying her good looks , carries a little too much ai n't she cute baggage into her lead role as a troubled and determined homicide cop to quite pull off the heavy stuff",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "beating the austin powers films at their own game , this blaxploitation spoof downplays the raunch in favor of gags that rely on the strength of their own cleverness as opposed to the extent of their outrageousness",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "pretty much sucks , but has a funny moment or two",
+            "predicted_class": 0,
+            "true_class": 0,
+            "correct": true
+        },
+        {
+            "text": "broomfield is energized by volletta wallace 's maternal fury , her fearlessness , and because of that , his film crackles",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "two hours of melodramatic musical married to two hours of underdog sports intrigue , if the picture also shares the weaknesses of both genres , more 's the pity",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "rarely has skin looked as beautiful , desirable , even delectable , as it does in trouble every day",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "an entertaining british hybrid of comedy , caper thrills and quirky romance",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "reggio and glass put on an intoxicating show",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "eight legged freaks is clever and funny , is amused by its special effects , and leaves you feeling like you 've seen a movie instead of an endless trailer",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "starts out with tremendous promise , introducing an intriguing and alluring premise , only to fall prey to a boatload of screenwriting cliches that sink it faster than a leaky freighter",
+            "predicted_class": 1,
+            "true_class": 0,
+            "correct": false
+        },
+        {
+            "text": "though the violence is far less sadistic than usual , the film is typical miike fast , furious and full of off the cuff imaginative flourishes",
+            "predicted_class": 1,
+            "true_class": 1,
+            "correct": true
+        },
+        {
+            "text": "it cuts to the core of what it actually means to face your fears , to be a girl in a world of boys , to be a boy truly in love with a girl , and to ride the big metaphorical wave that is life wherever it takes you",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "a slick , skillful little horror film",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        },
+        {
+            "text": "it 's definitely an improvement on the first blade , since it does n't take itself so deadly seriously",
+            "predicted_class": 0,
+            "true_class": 1,
+            "correct": false
+        }
+    ]
+}
